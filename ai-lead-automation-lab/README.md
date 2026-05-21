@@ -127,9 +127,9 @@ Polish the README for GitHub portfolio and client presentation.
 
 ## Current Status
 
-Current milestone: **Milestone 2 complete**
+Current milestone: **Milestone 6 complete**
 
-Milestone 2 adds realistic sample lead input data in JSON format. No OpenAI API calls, automation logic, external integrations, or tests have been added yet.
+Milestone 6 generates a lead score based on fit, urgency, budget, and intent. External integrations and tests have not been added yet.
 
 ## Project Structure
 
@@ -164,19 +164,19 @@ ai-lead-automation-lab/
 
 `app/` contains the Python application code.
 
-`app/config.py` will manage settings and environment variables later.
+`app/config.py` manages environment variables such as the OpenAI API key and model name.
 
 `app/main.py` will become the terminal entry point for running the automation.
 
 `app/automation/` contains small modules for each automation step.
 
-`app/automation/lead_loader.py` will load lead data from local JSON files.
+`app/automation/lead_loader.py` loads and validates lead data from local JSON files.
 
-`app/automation/summarizer.py` will summarize lead details using AI.
+`app/automation/summarizer.py` summarizes lead details using the OpenAI API.
 
-`app/automation/classifier.py` will classify leads as hot, warm, or cold.
+`app/automation/classifier.py` classifies leads as hot, warm, or cold using the OpenAI API.
 
-`app/automation/scorer.py` will calculate a lead quality score.
+`app/automation/scorer.py` calculates a lead quality score with a simple breakdown.
 
 `app/automation/message_generator.py` will draft follow-up emails or messages.
 
@@ -202,25 +202,25 @@ ai-lead-automation-lab/
 
 ## AI Automation Concept for This Milestone
 
-Milestone 1 is about **project framing and workflow design**.
+Milestone 6 is about **lead scoring**.
 
-Before writing automation logic, a professional AI automation developer should clearly define:
+After summarizing and classifying a lead, the next step is to calculate a numeric score that helps a team prioritize follow-up.
 
-- The business problem
-- The target users
-- The workflow steps
-- The project structure
-- The future integration points
-- The documentation that helps clients or employers understand the value
+This project scores each lead out of 100 using four categories:
 
-This makes the project easier to build, easier to explain, and easier to present in a portfolio.
+- Fit: whether the business type matches the target market
+- Urgency: how soon the lead needs help
+- Budget: whether the lead provided a clear budget
+- Intent: whether the lead shows strong buying intent
+
+This makes the output easier to review, sort, or send into a CRM later.
 
 ## Setup
 
 Create and activate a virtual environment:
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 ```
 
@@ -230,14 +230,44 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Run the placeholder app:
+Create a local `.env` file:
 
 ```bash
-python -m app.main
+cp .env.example .env
+```
+
+Then add your real OpenAI API key to `.env`:
+
+```text
+OPENAI_API_KEY=your_api_key_here
+OPENAI_MODEL=gpt-5.4-nano
+APP_ENV=development
+```
+
+Run the local lead loader, AI summarizer, AI classifier, and lead scorer:
+
+```bash
+python3 -m app.main
 ```
 
 Expected output:
 
 ```text
-AI Lead Intake Automation System - Milestone 1
+AI Lead Intake Automation System - Milestone 6
+Loaded lead: lead_004
+Business type: saas
+Contact: Noah Mitchell
+Company: PipelineMetric
+Interest: sales workflow automation
+Status: Lead data loaded and validated successfully.
+
+AI Summary:
+The lead is a SaaS company interested in sales workflow automation...
+
+AI Classification:
+hot
+
+Lead Score:
+100/100 (high)
+Breakdown: fit=25, urgency=25, budget=25, intent=25
 ```
