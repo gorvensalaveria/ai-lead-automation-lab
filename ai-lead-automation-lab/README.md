@@ -127,9 +127,9 @@ Polish the README for GitHub portfolio and client presentation.
 
 ## Current Status
 
-Current milestone: **Milestone 6 complete**
+Current milestone: **Milestone 8 complete**
 
-Milestone 6 generates a lead score based on fit, urgency, budget, and intent. External integrations and tests have not been added yet.
+Milestone 8 saves the full automation output locally as a JSON file. External integrations and tests have not been added yet.
 
 ## Project Structure
 
@@ -178,9 +178,9 @@ ai-lead-automation-lab/
 
 `app/automation/scorer.py` calculates a lead quality score with a simple breakdown.
 
-`app/automation/message_generator.py` will draft follow-up emails or messages.
+`app/automation/message_generator.py` drafts follow-up emails or messages using the OpenAI API.
 
-`app/automation/storage.py` will save automation results locally.
+`app/automation/storage.py` saves automation results locally as JSON files.
 
 `app/automation/logger.py` will handle logging later.
 
@@ -202,18 +202,20 @@ ai-lead-automation-lab/
 
 ## AI Automation Concept for This Milestone
 
-Milestone 6 is about **lead scoring**.
+Milestone 8 is about **local output storage**.
 
-After summarizing and classifying a lead, the next step is to calculate a numeric score that helps a team prioritize follow-up.
+After generating the AI summary, classification, score, and follow-up message, the next step is to save the result.
 
-This project scores each lead out of 100 using four categories:
+This project saves one JSON output file per processed lead. The saved output includes:
 
-- Fit: whether the business type matches the target market
-- Urgency: how soon the lead needs help
-- Budget: whether the lead provided a clear budget
-- Intent: whether the lead shows strong buying intent
+- Processing timestamp
+- Original lead data
+- AI summary
+- AI classification
+- Lead score
+- Follow-up message draft
 
-This makes the output easier to review, sort, or send into a CRM later.
+This makes the workflow easier to review and prepares the project for later CRM, Google Sheets, Airtable, Slack, n8n, Make, or Zapier integrations.
 
 ## Setup
 
@@ -244,7 +246,7 @@ OPENAI_MODEL=gpt-5.4-nano
 APP_ENV=development
 ```
 
-Run the local lead loader, AI summarizer, AI classifier, and lead scorer:
+Run the local lead loader, AI summarizer, AI classifier, lead scorer, follow-up message generator, and output saver:
 
 ```bash
 python3 -m app.main
@@ -253,7 +255,7 @@ python3 -m app.main
 Expected output:
 
 ```text
-AI Lead Intake Automation System - Milestone 6
+AI Lead Intake Automation System - Milestone 8
 Loaded lead: lead_004
 Business type: saas
 Contact: Noah Mitchell
@@ -270,4 +272,13 @@ hot
 Lead Score:
 100/100 (high)
 Breakdown: fit=25, urgency=25, budget=25, intent=25
+
+Follow-Up Message Draft:
+Subject: Helping PipelineMetric qualify demo requests faster
+
+Hi Noah,
+...
+
+Saved Output:
+data/outputs/lead_004_20260521T160000Z.json
 ```
