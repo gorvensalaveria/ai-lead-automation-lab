@@ -1,0 +1,21 @@
+{
+  "lead_id": "lead_004",
+  "source": "demo_request_form",
+  "submitted_at": "2026-05-21T15:30:00+08:00",
+  "business_type": "saas",
+  "contact": {
+    "first_name": "Noah",
+    "last_name": "Mitchell",
+    "email": "noah.mitchell@example.com",
+    "phone": "+1 646 555 0142",
+    "company": "PipelineMetric"
+  },
+  "lead_details": {
+    "service_interest": "sales workflow automation",
+    "message": "We need a better way to qualify inbound demo requests before our sales team spends time on calls. We use HubSpot and Slack.",
+    "budget_range": "USD 2,000 - USD 5,000",
+    "timeline": "urgent",
+    "preferred_contact_method": "phone"
+  }
+}
+

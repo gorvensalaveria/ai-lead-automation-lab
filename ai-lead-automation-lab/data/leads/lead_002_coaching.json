@@ -1,0 +1,21 @@
+{
+  "lead_id": "lead_002",
+  "source": "facebook_ad",
+  "submitted_at": "2026-05-21T10:40:00+08:00",
+  "business_type": "coaching",
+  "contact": {
+    "first_name": "Melissa",
+    "last_name": "Carter",
+    "email": "melissa.carter@example.com",
+    "phone": "+1 415 555 0188",
+    "company": "Carter Growth Coaching"
+  },
+  "lead_details": {
+    "service_interest": "business coaching program",
+    "message": "I run a small consulting business and need help building a consistent client acquisition process. I am comparing coaching programs and want pricing details.",
+    "budget_range": "USD 1,000 - USD 3,000",
+    "timeline": "this_quarter",
+    "preferred_contact_method": "email"
+  }
+}
+

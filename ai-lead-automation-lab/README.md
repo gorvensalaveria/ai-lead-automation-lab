@@ -127,9 +127,9 @@ Polish the README for GitHub portfolio and client presentation.
 
 ## Current Status
 
-Current milestone: **Milestone 1 complete**
+Current milestone: **Milestone 2 complete**
 
-This milestone only sets up the project skeleton. No OpenAI API calls, automation logic, external integrations, or tests have been added yet.
+Milestone 2 adds realistic sample lead input data in JSON format. No OpenAI API calls, automation logic, external integrations, or tests have been added yet.
 
 ## Project Structure
 
@@ -241,4 +241,3 @@ Expected output:
 ```text
 AI Lead Intake Automation System - Milestone 1
 ```
-

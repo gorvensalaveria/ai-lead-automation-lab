@@ -1,0 +1,21 @@
+{
+  "lead_id": "lead_003",
+  "source": "email_inquiry",
+  "submitted_at": "2026-05-21T13:05:00+08:00",
+  "business_type": "ecommerce",
+  "contact": {
+    "first_name": "Amelia",
+    "last_name": "Brooks",
+    "email": "amelia.brooks@example.com",
+    "phone": "+44 20 5555 0199",
+    "company": "Brooks Home Goods"
+  },
+  "lead_details": {
+    "service_interest": "customer support automation",
+    "message": "Our store receives many repetitive questions about shipping, refunds, and order status. We want to reduce manual replies but still keep responses friendly.",
+    "budget_range": "USD 500 - USD 1,500",
+    "timeline": "next_60_days",
+    "preferred_contact_method": "email"
+  }
+}
+

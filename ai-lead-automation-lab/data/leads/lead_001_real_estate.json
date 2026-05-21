@@ -1,0 +1,21 @@
+{
+  "lead_id": "lead_001",
+  "source": "website_form",
+  "submitted_at": "2026-05-21T09:15:00+08:00",
+  "business_type": "real_estate",
+  "contact": {
+    "first_name": "Daniel",
+    "last_name": "Reyes",
+    "email": "daniel.reyes@example.com",
+    "phone": "+63 917 555 0101",
+    "company": "Reyes Family Holdings"
+  },
+  "lead_details": {
+    "service_interest": "condominium investment consultation",
+    "message": "I am looking for a condo investment in Metro Manila within the next 30 days. I prefer properties near business districts and want to understand expected rental income.",
+    "budget_range": "PHP 8M - PHP 12M",
+    "timeline": "within_30_days",
+    "preferred_contact_method": "email"
+  }
+}
+
