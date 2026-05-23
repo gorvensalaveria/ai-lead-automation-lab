@@ -31,13 +31,13 @@ The workflow can:
 5. Generate a rule-based lead score using fit, urgency, budget, and intent.
 6. Use the OpenAI API to draft a personalized follow-up message.
 7. Save the full automation output locally as JSON.
-8. Expose the workflow through both a terminal command and a webhook API.
+8. Expose the workflow through a terminal command, webhook API, and simple browser demo.
 
 ## Current Status
 
-Current milestone: **Milestone 14 complete**
+Current milestone: **Product demo upgrade in progress**
 
-The core portfolio version is complete. It includes the local terminal workflow, FastAPI webhook endpoint, logging, local JSON output storage, pytest tests, and documentation for future n8n, Make.com, and Zapier connections.
+The core portfolio version is complete. It includes the local terminal workflow, FastAPI webhook endpoint, browser demo page, logging, local JSON output storage, pytest tests, and documentation for future n8n, Make.com, and Zapier connections.
 
 Live external integrations are documented but not implemented.
 
@@ -70,6 +70,7 @@ Live external integrations are documented but not implemented.
 - Logging
 - Local output storage
 - FastAPI endpoint design
+- Simple web demo design
 - Basic automated testing
 - Client-friendly documentation
 - n8n, Make.com, and Zapier integration planning
@@ -81,6 +82,7 @@ ai-lead-automation-lab/
 ├── app/
 │   ├── api.py
 │   ├── config.py
+│   ├── demo_page.py
 │   ├── main.py
 │   └── automation/
 │       ├── classifier.py
@@ -112,8 +114,12 @@ ai-lead-automation-lab/
 
 `app/api.py` exposes FastAPI endpoints:
 
+- `GET /`
+- `GET /demo`
 - `GET /health`
 - `POST /webhooks/leads`
+
+`app/demo_page.py` contains the self-contained HTML, CSS, and JavaScript for the browser demo.
 
 `app/automation/workflow.py` contains the shared workflow used by both the terminal command and FastAPI API.
 
@@ -227,6 +233,21 @@ Start the API server:
 uvicorn app.api:app --reload
 ```
 
+Open the browser demo:
+
+```text
+http://127.0.0.1:8000/demo
+```
+
+The demo page lets a user enter lead details, click **Process Lead**, and view:
+
+- AI summary
+- Hot/warm/cold classification
+- Lead score and rating
+- Score breakdown
+- Follow-up message draft
+- Saved output path
+
 Open the interactive API docs:
 
 ```text
@@ -259,8 +280,19 @@ The saved output includes:
 - AI lead classification
 - Lead score and score breakdown
 - AI-generated follow-up message draft
+- CRM-ready flattened output for future spreadsheet, CRM, or automation platform handoff
 
 Generated `.json` output files are ignored by Git because real outputs may contain lead or customer information.
+
+## Demo Leads
+
+The project includes sample demo leads for common client conversations:
+
+- `data/leads/demo_hot_saas.json`
+- `data/leads/demo_warm_coaching.json`
+- `data/leads/demo_cold_general.json`
+
+The browser demo also has quick-fill buttons for hot, warm, and cold examples.
 
 ## Tests
 
@@ -273,11 +305,13 @@ python3 -m pytest
 The current tests cover:
 
 - API health endpoint
+- Browser demo page
 - Invalid webhook lead validation
 - Lead JSON loading
 - Missing lead file handling
 - Required field validation
 - Output result structure
+- CRM-ready output structure
 - Local JSON output saving
 
 The tests do not call the OpenAI API, so they run without spending API credits.
@@ -322,9 +356,10 @@ POST /webhooks/leads
 12. FastAPI webhook endpoints
 13. n8n, Make.com, and Zapier documentation
 14. README polish for GitHub portfolio presentation
+15. Simple FastAPI browser demo and CRM-ready output block
 
 ## Portfolio Talking Point
 
-This project demonstrates a practical AI automation workflow for businesses that receive inbound leads and need faster qualification, prioritization, and follow-up drafting.
+This project demonstrates a practical AI automation workflow for businesses that receive inbound leads and need faster qualification, prioritization, follow-up drafting, and CRM-ready handoff.
 
 It is intentionally beginner-friendly, but it uses real-world building blocks: structured JSON, OpenAI API calls, validation, scoring logic, FastAPI webhooks, local storage, logging, and tests.

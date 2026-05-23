@@ -23,12 +23,15 @@ def summarize_lead(lead: dict[str, Any]) -> str:
             instructions=(
                 "You summarize inbound business leads for an AI automation specialist. "
                 "Write clearly and professionally. Do not invent details. "
-                "Keep the summary useful for a sales or operations team."
+                "Keep the summary useful for a sales or operations team. "
+                "Write in plain text only. Do not use Markdown, asterisks, "
+                "bold formatting, headings, or bullet points."
             ),
             input=(
-                "Summarize this lead in 2-3 sentences. Include the service interest, "
-                "business need, budget range, timeline, and preferred contact method "
-                "when available.\n\n"
+                "Summarize this lead in 1-2 concise sentences. Focus on the business "
+                "need, service interest, budget clarity, timeline, and relevant tools "
+                "or workflow context. Do not repeat every field, and do not include "
+                "the phone number unless it is important to the need.\n\n"
                 f"Lead JSON:\n{json.dumps(lead, indent=2)}"
             ),
         )

@@ -3,9 +3,11 @@
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 
 from app.automation.logger import setup_logger
 from app.automation.workflow import process_lead
+from app.demo_page import render_demo_page
 
 
 app = FastAPI(
@@ -14,6 +16,18 @@ app = FastAPI(
     version="0.1.0",
 )
 logger = setup_logger()
+
+
+@app.get("/", response_class=HTMLResponse)
+def demo_home() -> str:
+    """Serve the browser-based lead intake demo."""
+    return render_demo_page()
+
+
+@app.get("/demo", response_class=HTMLResponse)
+def demo_page() -> str:
+    """Serve the browser-based lead intake demo."""
+    return render_demo_page()
 
 
 @app.get("/health")

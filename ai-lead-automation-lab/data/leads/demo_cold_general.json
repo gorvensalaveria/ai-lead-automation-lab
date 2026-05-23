@@ -1,0 +1,20 @@
+{
+  "lead_id": "demo_cold_general",
+  "source": "website_form",
+  "submitted_at": "2026-05-23T09:30:00+08:00",
+  "business_type": "other",
+  "contact": {
+    "first_name": "Taylor",
+    "last_name": "Morgan",
+    "email": "taylor.morgan@example.com",
+    "phone": "+1 206 555 0117",
+    "company": "Morgan Studio"
+  },
+  "lead_details": {
+    "service_interest": "general information",
+    "message": "I am just browsing options and collecting information for a possible project later this year.",
+    "budget_range": "unknown",
+    "timeline": "not_sure",
+    "preferred_contact_method": "email"
+  }
+}

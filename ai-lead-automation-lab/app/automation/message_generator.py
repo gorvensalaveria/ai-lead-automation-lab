@@ -30,11 +30,13 @@ def generate_follow_up_message(
                 "Write in a professional, helpful, and concise tone. "
                 "Do not invent offers, prices, calendar links, or guarantees. "
                 "Keep the message practical for a sales or operations team to review "
-                "before sending."
+                "before sending. Write in plain text only. Do not use Markdown, "
+                "asterisks, bold formatting, or bullet points."
             ),
             input=(
                 "Draft a personalized follow-up email for this lead. "
-                "Include a short subject line, a greeting using the lead's first name, "
+                "Start with a plain text subject line formatted like 'Subject: ...'. "
+                "Include a greeting using the lead's first name, "
                 "a brief acknowledgement of their need, one helpful next step, "
                 "and a polite call to action. Keep it under 180 words.\n\n"
                 f"Lead JSON:\n{json.dumps(lead, indent=2)}\n\n"

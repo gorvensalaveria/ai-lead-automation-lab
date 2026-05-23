@@ -55,6 +55,10 @@ def test_build_result_contains_expected_output_sections():
     assert result["ai_outputs"]["classification"] == "hot"
     assert result["ai_outputs"]["score"]["rating"] == "high"
     assert result["ai_outputs"]["follow_up_message"].startswith("Hi Ana")
+    assert result["crm_ready"]["contact_name"] == "Ana Santos"
+    assert result["crm_ready"]["company"] == "Santos Software"
+    assert result["crm_ready"]["lead_score"] == 100
+    assert result["crm_ready"]["recommended_next_action"].startswith("Reply quickly")
 
 
 def test_save_output_writes_result_to_json_file(tmp_path):
@@ -75,3 +79,4 @@ def test_save_output_writes_result_to_json_file(tmp_path):
     saved_result = json.loads(file_path.read_text(encoding="utf-8"))
     assert saved_result["lead"]["lead_id"] == "lead_test"
     assert saved_result["ai_outputs"]["classification"] == "hot"
+    assert saved_result["crm_ready"]["classification"] == "hot"
