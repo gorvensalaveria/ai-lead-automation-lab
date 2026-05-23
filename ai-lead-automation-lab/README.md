@@ -1,49 +1,58 @@
 # AI Lead Intake Automation System
 
-Beginner-friendly AI automation portfolio project for qualifying, summarizing, scoring, and preparing follow-up messages for new business leads.
+AI automation portfolio project that processes inbound leads, summarizes business needs, classifies lead quality, calculates a lead score, drafts a follow-up message, and saves the result for review or future CRM integration.
 
-## Recommended Portfolio Positioning
+## Portfolio Summary
 
 **Project name:** AI Lead Intake Automation System
 
-**GitHub repo name:** `ai-lead-automation-lab`
+**Repository name:** `ai-lead-automation-lab`
 
-**GitHub description:** AI automation system that processes leads, summarizes intent, scores quality, and drafts follow-up messages for business workflows.
+**Short description:** AI automation system that processes leads, summarizes intent, scores quality, and drafts follow-up messages for business workflows.
+
+**Target role:** AI Automation Specialist / AI Automation Developer
+
+**Target clients and employers:** agencies, consultants, coaches, SaaS businesses, real estate teams, e-commerce businesses, appointment-based businesses, and service companies hiring remote Filipino AI automation talent.
 
 ## Business Problem
 
-Many businesses receive leads from forms, messages, ads, or emails. Teams often spend too much time manually reading each lead, checking whether the lead is worth pursuing, writing notes, and preparing follow-up messages.
+Many businesses receive leads from forms, messages, ads, emails, or booking pages. Teams often spend too much time manually reading each lead, deciding whether it is worth pursuing, writing notes, and drafting follow-up messages.
 
-This project demonstrates how AI automation can support that workflow.
+This project shows how AI automation can reduce that manual work while still keeping the final output reviewable by a human.
 
-## Project Solution
+## What This Project Does
 
-This system will eventually:
+The workflow can:
 
-1. Accept new lead information.
-2. Store the lead data locally.
-3. Summarize the lead.
-4. Classify the lead as hot, warm, or cold.
-5. Identify intent, pain point, and urgency.
-6. Generate a lead score.
-7. Draft a personalized follow-up message.
-8. Save the automation output for review or CRM integration.
+1. Load lead data from JSON or receive it through a FastAPI webhook.
+2. Validate required lead fields.
+3. Use the OpenAI API to summarize the lead.
+4. Use the OpenAI API to classify the lead as `hot`, `warm`, or `cold`.
+5. Generate a rule-based lead score using fit, urgency, budget, and intent.
+6. Use the OpenAI API to draft a personalized follow-up message.
+7. Save the full automation output locally as JSON.
+8. Expose the workflow through both a terminal command and a webhook API.
 
-## Target Users
+## Current Status
 
-This project is designed for:
+Current milestone: **Milestone 14 complete**
 
-- Agencies
-- Consultants and coaches
-- SaaS businesses
-- Real estate teams
-- E-commerce businesses
-- Appointment-based businesses
-- Service companies hiring remote Filipino AI automation talent
+The core portfolio version is complete. It includes the local terminal workflow, FastAPI webhook endpoint, logging, local JSON output storage, pytest tests, and documentation for future n8n, Make.com, and Zapier connections.
+
+Live external integrations are documented but not implemented.
+
+## Tech Stack
+
+- Python
+- OpenAI API
+- FastAPI
+- Uvicorn
+- pytest
+- python-dotenv
+- JSON local storage
+- Local logging
 
 ## Skills Demonstrated
-
-Over the full project, this portfolio will demonstrate:
 
 - AI workflow automation
 - OpenAI API usage
@@ -53,106 +62,43 @@ Over the full project, this portfolio will demonstrate:
 - Lead scoring
 - AI summarization
 - AI classification
-- Follow-up email and message generation
-- CRM automation concepts
-- Email automation concepts
-- Google Sheets, Airtable, and Slack automation concepts
-- Webhook basics
-- API integration basics
+- Follow-up email/message generation
+- Webhook/API basics
 - JSON data processing
-- Environment variable management
+- Environment variables and API key management
 - Error handling
 - Logging
-- Local data storage
+- Local output storage
+- FastAPI endpoint design
+- Basic automated testing
 - Client-friendly documentation
-- Basic testing
-
-## Milestone Plan
-
-### Milestone 1: Project Setup
-
-Create the project structure, `requirements.txt`, `.env.example`, `.gitignore`, and README draft only.
-
-### Milestone 2: Sample Lead Data
-
-Create sample lead input data in JSON.
-
-### Milestone 3: Local Lead Loading
-
-Load and validate lead data locally.
-
-### Milestone 4: AI Lead Summary
-
-Use the OpenAI API to summarize a lead.
-
-### Milestone 5: AI Lead Classification
-
-Use the OpenAI API to classify a lead as hot, warm, or cold.
-
-### Milestone 6: Lead Scoring
-
-Generate a lead score based on fit, urgency, budget, and intent.
-
-### Milestone 7: Follow-Up Draft
-
-Generate a personalized follow-up email or message draft.
-
-### Milestone 8: Local Output Storage
-
-Save automation output locally as JSON or SQLite.
-
-### Milestone 9: Terminal Workflow
-
-Add a simple terminal-based workflow that runs the full automation.
-
-### Milestone 10: Error Handling and Logging
-
-Add basic error handling and logging.
-
-### Milestone 11: Basic Tests
-
-Add pytest tests for lead loading, output format, and storage.
-
-### Milestone 12: FastAPI Webhook
-
-Add FastAPI webhook endpoints after the terminal version works.
-
-### Milestone 13: Automation Platform Documentation
-
-Add optional n8n, Make.com, and Zapier integration documentation.
-
-### Milestone 14: Portfolio Polish
-
-Polish the README for GitHub portfolio and client presentation.
-
-## Current Status
-
-Current milestone: **Milestone 8 complete**
-
-Milestone 8 saves the full automation output locally as a JSON file. External integrations and tests have not been added yet.
+- n8n, Make.com, and Zapier integration planning
 
 ## Project Structure
 
 ```text
 ai-lead-automation-lab/
 ├── app/
+│   ├── api.py
 │   ├── config.py
 │   ├── main.py
 │   └── automation/
-│       ├── lead_loader.py
-│       ├── summarizer.py
 │       ├── classifier.py
-│       ├── scorer.py
+│       ├── lead_loader.py
+│       ├── logger.py
 │       ├── message_generator.py
+│       ├── scorer.py
 │       ├── storage.py
-│       └── logger.py
+│       ├── summarizer.py
+│       └── workflow.py
 ├── data/
 │   ├── leads/
 │   └── outputs/
 ├── integrations/
-│   ├── n8n/
 │   ├── make/
+│   ├── n8n/
 │   └── zapier/
+├── logs/
 ├── tests/
 ├── .env.example
 ├── .gitignore
@@ -160,62 +106,38 @@ ai-lead-automation-lab/
 └── README.md
 ```
 
-## What Each Folder and File Is For
+## Key Files
 
-`app/` contains the Python application code.
+`app/main.py` is the terminal entry point.
 
-`app/config.py` manages environment variables such as the OpenAI API key and model name.
+`app/api.py` exposes FastAPI endpoints:
 
-`app/main.py` will become the terminal entry point for running the automation.
+- `GET /health`
+- `POST /webhooks/leads`
 
-`app/automation/` contains small modules for each automation step.
+`app/automation/workflow.py` contains the shared workflow used by both the terminal command and FastAPI API.
 
-`app/automation/lead_loader.py` loads and validates lead data from local JSON files.
+`app/automation/lead_loader.py` loads and validates lead JSON.
 
 `app/automation/summarizer.py` summarizes lead details using the OpenAI API.
 
-`app/automation/classifier.py` classifies leads as hot, warm, or cold using the OpenAI API.
+`app/automation/classifier.py` classifies leads as `hot`, `warm`, or `cold`.
 
-`app/automation/scorer.py` calculates a lead quality score with a simple breakdown.
+`app/automation/scorer.py` calculates a lead quality score.
 
-`app/automation/message_generator.py` drafts follow-up emails or messages using the OpenAI API.
+`app/automation/message_generator.py` drafts follow-up messages using the OpenAI API.
 
-`app/automation/storage.py` saves automation results locally as JSON files.
+`app/automation/storage.py` saves processed outputs as JSON.
 
-`app/automation/logger.py` will handle logging later.
+`app/automation/logger.py` writes local workflow logs.
 
-`data/leads/` will store sample lead input files.
+`data/leads/` contains sample lead JSON files.
 
-`data/outputs/` will store generated automation results.
+`data/outputs/` stores generated local output files.
 
-`integrations/` is reserved for future n8n, Make.com, and Zapier documentation.
+`integrations/` documents future n8n, Make.com, and Zapier workflows.
 
-`tests/` will contain pytest tests in a later milestone.
-
-`.env.example` shows which environment variables the project will need.
-
-`.gitignore` prevents secrets, virtual environments, cache files, and generated outputs from being committed.
-
-`requirements.txt` lists Python packages needed for the current milestone.
-
-`README.md` explains the project, target users, milestone plan, and structure.
-
-## AI Automation Concept for This Milestone
-
-Milestone 8 is about **local output storage**.
-
-After generating the AI summary, classification, score, and follow-up message, the next step is to save the result.
-
-This project saves one JSON output file per processed lead. The saved output includes:
-
-- Processing timestamp
-- Original lead data
-- AI summary
-- AI classification
-- Lead score
-- Follow-up message draft
-
-This makes the workflow easier to review and prepares the project for later CRM, Google Sheets, Airtable, Slack, n8n, Make, or Zapier integrations.
+`tests/` contains pytest tests.
 
 ## Setup
 
@@ -229,16 +151,16 @@ source .venv/bin/activate
 Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 ```
 
-Create a local `.env` file:
+Create your local environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Then add your real OpenAI API key to `.env`:
+Add your OpenAI API key to `.env`:
 
 ```text
 OPENAI_API_KEY=your_api_key_here
@@ -246,16 +168,33 @@ OPENAI_MODEL=gpt-5.4-nano
 APP_ENV=development
 ```
 
-Run the local lead loader, AI summarizer, AI classifier, lead scorer, follow-up message generator, and output saver:
+Do not commit `.env` to GitHub.
+
+## Run The Terminal Workflow
+
+Run the default sample lead:
 
 ```bash
 python3 -m app.main
 ```
 
-Expected output:
+Run a specific lead file:
+
+```bash
+python3 -m app.main --lead-file data/leads/lead_004_saas.json
+```
+
+Run with a custom output folder:
+
+```bash
+python3 -m app.main --lead-file data/leads/lead_004_saas.json --output-dir data/outputs
+```
+
+Example output:
 
 ```text
-AI Lead Intake Automation System - Milestone 8
+AI Lead Intake Automation System
+Lead file: data/leads/lead_004_saas.json
 Loaded lead: lead_004
 Business type: saas
 Contact: Noah Mitchell
@@ -276,9 +215,116 @@ Breakdown: fit=25, urgency=25, budget=25, intent=25
 Follow-Up Message Draft:
 Subject: Helping PipelineMetric qualify demo requests faster
 
-Hi Noah,
-...
-
 Saved Output:
-data/outputs/lead_004_20260521T160000Z.json
+data/outputs/lead_004_20260522T134038Z.json
 ```
+
+## Run The FastAPI Webhook API
+
+Start the API server:
+
+```bash
+uvicorn app.api:app --reload
+```
+
+Open the interactive API docs:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+Health check:
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+Process a lead through the webhook endpoint:
+
+```bash
+curl -X POST http://127.0.0.1:8000/webhooks/leads \
+  -H "Content-Type: application/json" \
+  -d @data/leads/lead_004_saas.json
+```
+
+## Output Format
+
+Each successful run saves a JSON file in `data/outputs/`.
+
+The saved output includes:
+
+- Processing timestamp
+- Original lead data
+- AI-generated summary
+- AI lead classification
+- Lead score and score breakdown
+- AI-generated follow-up message draft
+
+Generated `.json` output files are ignored by Git because real outputs may contain lead or customer information.
+
+## Tests
+
+Run tests:
+
+```bash
+python3 -m pytest
+```
+
+The current tests cover:
+
+- API health endpoint
+- Invalid webhook lead validation
+- Lead JSON loading
+- Missing lead file handling
+- Required field validation
+- Output result structure
+- Local JSON output saving
+
+The tests do not call the OpenAI API, so they run without spending API credits.
+
+## Logs
+
+Logs are written locally to:
+
+```text
+logs/app.log
+```
+
+Generated `.log` files are ignored by Git.
+
+## Integration Notes
+
+The project includes documentation for future automation platform connections:
+
+- [n8n integration notes](integrations/n8n/README.md)
+- [Make.com integration notes](integrations/make/README.md)
+- [Zapier integration notes](integrations/zapier/README.md)
+
+These docs explain how each platform could send lead JSON to:
+
+```text
+POST /webhooks/leads
+```
+
+## Milestone History
+
+1. Project setup
+2. Sample lead JSON data
+3. Local lead loading and validation
+4. OpenAI lead summarization
+5. OpenAI hot/warm/cold classification
+6. Rule-based lead scoring
+7. OpenAI follow-up message draft
+8. Local JSON output storage
+9. Terminal workflow
+10. Error handling and logging
+11. pytest tests
+12. FastAPI webhook endpoints
+13. n8n, Make.com, and Zapier documentation
+14. README polish for GitHub portfolio presentation
+
+## Portfolio Talking Point
+
+This project demonstrates a practical AI automation workflow for businesses that receive inbound leads and need faster qualification, prioritization, and follow-up drafting.
+
+It is intentionally beginner-friendly, but it uses real-world building blocks: structured JSON, OpenAI API calls, validation, scoring logic, FastAPI webhooks, local storage, logging, and tests.

@@ -16,9 +16,9 @@ env/
 # Local generated data
 data/outputs/*.json
 data/outputs/*.db
+logs/*.log
 
 # OS/editor files
 .DS_Store
 .idea/
 .vscode/
-
