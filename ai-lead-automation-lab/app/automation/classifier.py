@@ -26,8 +26,10 @@ def classify_lead(lead: dict[str, Any]) -> str:
             instructions=(
                 "You classify inbound business leads for a sales or operations team. "
                 "Use only one classification: hot, warm, or cold. "
-                "Hot means high urgency, strong fit, and clear buying intent. "
+                "Hot means high urgency, strong fit, clear budget, and clear buying intent. "
                 "Warm means some fit or interest, but timing, budget, or intent is less clear. "
+                "If the lead is exploring, comparing options, or has a budget that is not finalized, "
+                "classify it as warm unless there is explicit urgency and strong buying intent. "
                 "Cold means low urgency, weak fit, unclear intent, or poor readiness. "
                 "Return only the classification word in lowercase."
             ),

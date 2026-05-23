@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Lead Qualification Assistant</title>
+  <link rel="stylesheet" href="/static/demo.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div>
+        <p class="eyebrow">AI Automation Portfolio Project</p>
+        <h1>AI Lead Qualification Assistant</h1>
+        <p class="subtitle">Turn inbound leads into summaries, scores, recommended next actions, and ready-to-send follow-ups.</p>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="value-strip" aria-label="Business value">
+      <div class="value-item">
+        <span>Use Case</span>
+        <strong>Website, ad, booking, and CRM leads</strong>
+        <p>Useful for forms, ads, bookings, and CRM inquiries.</p>
+      </div>
+      <div class="value-item">
+        <span>Saves Time</span>
+        <strong>Reduces manual lead review</strong>
+        <p>Scores help teams decide who to contact first.</p>
+      </div>
+      <div class="value-item">
+        <span>Output</span>
+        <strong>CRM-ready notes and follow-up draft</strong>
+        <p>Each lead is saved as structured JSON.</p>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <section class="panel" aria-labelledby="form-title">
+        <div class="panel-title">
+          <div>
+            <h2 id="form-title">Lead Details</h2>
+            <p class="helper-text">Enter a lead manually or load a sample scenario.</p>
+          </div>
+        </div>
+
+        <div class="demo-group">
+          <div class="demo-label">Try Sample Leads</div>
+          <div class="demo-buttons" aria-label="Demo leads">
+            <button class="secondary" type="button" data-demo="hot">Hot SaaS Demo Request</button>
+            <button class="secondary" type="button" data-demo="warm">Warm Coaching Inquiry</button>
+            <button class="secondary" type="button" data-demo="cold">Cold General Inquiry</button>
+          </div>
+        </div>
+
+        <form id="lead-form">
+          <div class="field-grid">
+            <label>First Name
+              <input name="first_name" required autocomplete="given-name">
+            </label>
+            <label>Last Name
+              <input name="last_name" required autocomplete="family-name">
+            </label>
+            <label>Email
+              <input name="email" type="email" required autocomplete="email">
+            </label>
+            <label>Phone
+              <input name="phone" required autocomplete="tel">
+            </label>
+            <label>Company
+              <input name="company" required autocomplete="organization">
+            </label>
+            <label>Source
+              <select name="source" required>
+                <option value="website_form">Website form</option>
+                <option value="demo_request_form">Demo request form</option>
+                <option value="facebook_ad">Facebook ad</option>
+                <option value="email_inquiry">Email inquiry</option>
+                <option value="booking_page">Booking page</option>
+              </select>
+            </label>
+            <label>Business Type
+              <select name="business_type" required>
+                <option value="saas">SaaS</option>
+                <option value="agency">Agency</option>
+                <option value="consulting">Consulting</option>
+                <option value="coaching">Coaching</option>
+                <option value="ecommerce">E-commerce</option>
+                <option value="real_estate">Real estate</option>
+                <option value="service_business">Service business</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label>Timeline
+              <select name="timeline" required>
+                <option value="urgent">Urgent</option>
+                <option value="within_30_days">Within 30 days</option>
+                <option value="next_60_days">Next 60 days</option>
+                <option value="this_quarter">This quarter</option>
+                <option value="not_sure">Not sure</option>
+              </select>
+            </label>
+            <label>Budget Range
+              <input name="budget_range" required>
+            </label>
+            <label>Preferred Contact
+              <select name="preferred_contact_method" required>
+                <option value="email">Email</option>
+                <option value="phone">Phone</option>
+                <option value="sms">SMS</option>
+                <option value="whatsapp">WhatsApp</option>
+              </select>
+            </label>
+          </div>
+
+          <label>Service Interest
+            <input name="service_interest" required>
+          </label>
+
+          <label>Lead Message
+            <textarea name="message" required></textarea>
+          </label>
+
+          <div class="actions">
+            <p class="action-copy">Run the AI qualification workflow</p>
+            <button class="primary-action" id="submit-button" type="submit">Process Lead</button>
+            <p id="status" class="status" role="status"></p>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel results-panel" aria-labelledby="results-title">
+        <div class="panel-title">
+          <div>
+            <h2 id="results-title">Automation Results</h2>
+            <p class="helper-text">A client-friendly report appears here after processing.</p>
+          </div>
+        </div>
+        <div id="results" class="result-empty">
+          <h3>What this automation generates</h3>
+          <p>Process a lead to see a report your team can review before replying.</p>
+          <div class="empty-grid">
+            <div class="empty-card">
+              <span>AI Summary</span>
+              <p>Short plain-English context for the lead.</p>
+            </div>
+            <div class="empty-card">
+              <span>Classification</span>
+              <p>Hot, warm, or cold lead priority.</p>
+            </div>
+            <div class="empty-card">
+              <span>Lead Score</span>
+              <p>Fit, urgency, budget, and intent scoring.</p>
+            </div>
+            <div class="empty-card">
+              <span>Follow-Up Draft</span>
+              <p>A ready-to-edit reply for the prospect.</p>
+            </div>
+            <div class="empty-card">
+              <span>Next Action</span>
+              <p>Simple sales recommendation.</p>
+            </div>
+            <div class="empty-card">
+              <span>CRM Output</span>
+              <p>Structured fields saved for future handoff.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    Demo built with Python, FastAPI, OpenAI API, JSON storage, and pytest.
+  </footer>
+
+  <script src="/static/demo.js"></script>
+</body>
+</html>

@@ -84,6 +84,11 @@ ai-lead-automation-lab/
 │   ├── config.py
 │   ├── demo_page.py
 │   ├── main.py
+│   ├── static/
+│   │   ├── demo.css
+│   │   └── demo.js
+│   ├── templates/
+│   │   └── demo.html
 │   └── automation/
 │       ├── classifier.py
 │       ├── lead_loader.py
@@ -119,7 +124,13 @@ ai-lead-automation-lab/
 - `GET /health`
 - `POST /webhooks/leads`
 
-`app/demo_page.py` contains the self-contained HTML, CSS, and JavaScript for the browser demo.
+`app/demo_page.py` loads the browser demo HTML template.
+
+`app/templates/demo.html` contains the browser demo page markup.
+
+`app/static/demo.css` contains the browser demo styling.
+
+`app/static/demo.js` contains the browser demo sample lead and result rendering behavior.
 
 `app/automation/workflow.py` contains the shared workflow used by both the terminal command and FastAPI API.
 

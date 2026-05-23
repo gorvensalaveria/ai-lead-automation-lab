@@ -11,10 +11,10 @@
     "company": "Carter Growth Coaching"
   },
   "lead_details": {
-    "service_interest": "business coaching program",
-    "message": "I run a small consulting business and need help building a consistent client acquisition process. I am comparing coaching programs and want pricing details.",
-    "budget_range": "USD 1,000 - USD 3,000",
-    "timeline": "this_quarter",
+    "service_interest": "client acquisition workflow review",
+    "message": "I run a small consulting business and I am exploring ways to make client acquisition more consistent. I am still comparing options and would like to understand what a starter workflow could look like.",
+    "budget_range": "budget not finalized",
+    "timeline": "next_60_days",
     "preferred_contact_method": "email"
   }
 }

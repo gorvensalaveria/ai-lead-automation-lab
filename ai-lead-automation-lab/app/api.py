@@ -1,20 +1,25 @@
 """FastAPI webhook endpoints for the AI Lead Intake Automation System."""
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.automation.logger import setup_logger
 from app.automation.workflow import process_lead
 from app.demo_page import render_demo_page
 
 
+STATIC_DIR = Path(__file__).parent / "static"
+
 app = FastAPI(
     title="AI Lead Intake Automation API",
     description="Webhook API for processing and qualifying inbound leads.",
     version="0.1.0",
 )
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 logger = setup_logger()
 
 
