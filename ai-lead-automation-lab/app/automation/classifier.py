@@ -31,7 +31,8 @@ def classify_lead(lead: dict[str, Any]) -> str:
                 "If the lead is exploring, comparing options, or has a budget that is not finalized, "
                 "classify it as warm unless there is explicit urgency and strong buying intent. "
                 "Cold means low urgency, weak fit, unclear intent, or poor readiness. "
-                "Return only the classification word in lowercase."
+                "Return only the classification word in lowercase English. Do not return "
+                "extra text, punctuation, non-English words, or non-Latin characters."
             ),
             input=(
                 "Classify this lead as hot, warm, or cold.\n\n"

@@ -33,7 +33,10 @@ def generate_follow_up_message(
                 "before sending. Write in plain text only. Do not use Markdown, "
                 "asterisks, bold formatting, or bullet points. Do not include "
                 "signature placeholders such as [Your Name], [Company Name], "
-                "[Phone], or [Website]."
+                "[Phone], or [Website]. Write only in English. Do not use non-English "
+                "words, translations, or non-Latin characters. If a detail is missing "
+                "or unclear, describe it in English as 'not provided', 'not finalized', "
+                "or 'not sure'."
             ),
             input=(
                 "Draft a personalized follow-up email for this lead. "
@@ -42,7 +45,8 @@ def generate_follow_up_message(
                 "a brief acknowledgement of their need, one helpful next step, "
                 "and a polite call to action. End cleanly after the call to action "
                 "without adding a signature block or placeholder contact details. "
-                "Keep it under 180 words.\n\n"
+                "Do not include bracketed placeholders of any kind. Use only English "
+                "words and standard punctuation. Keep it under 180 words.\n\n"
                 f"Lead JSON:\n{json.dumps(lead, indent=2)}\n\n"
                 f"Lead summary:\n{summary}\n\n"
                 f"Lead classification:\n{classification}\n\n"
