@@ -40,6 +40,23 @@ def test_demo_static_assets_are_served():
     assert "/webhooks/leads" in js_response.text
 
 
+def test_history_page_returns_html_without_openai_call():
+    response = client.get("/history")
+
+    assert response.status_code == 200
+    assert "Lead Review History" in response.text
+    assert "Processed Lead History" in response.text
+    assert 'href="/demo"' in response.text
+
+
+def test_history_api_returns_leads_list_without_openai_call():
+    response = client.get("/api/history")
+
+    assert response.status_code == 200
+    assert "leads" in response.json()
+    assert isinstance(response.json()["leads"], list)
+
+
 def test_lead_webhook_rejects_invalid_lead_without_openai_call():
     response = client.post(
         "/webhooks/leads",

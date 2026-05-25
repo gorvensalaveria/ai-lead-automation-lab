@@ -31,7 +31,8 @@ The workflow can:
 5. Generate a rule-based lead score using fit, urgency, budget, and intent.
 6. Use the OpenAI API to draft a personalized follow-up message.
 7. Save the full automation output locally as JSON.
-8. Expose the workflow through a terminal command, webhook API, and simple browser demo.
+8. Show saved lead results in a simple review history page.
+9. Expose the workflow through a terminal command, webhook API, and simple browser demo.
 
 ## Current Status
 
@@ -71,6 +72,7 @@ Live external integrations are documented but not implemented.
 - Local output storage
 - FastAPI endpoint design
 - Simple web demo design
+- Saved lead review history
 - Basic automated testing
 - Client-friendly documentation
 - n8n, Make.com, and Zapier integration planning
@@ -121,6 +123,8 @@ ai-lead-automation-lab/
 
 - `GET /`
 - `GET /demo`
+- `GET /history`
+- `GET /api/history`
 - `GET /health`
 - `POST /webhooks/leads`
 
@@ -259,6 +263,27 @@ The demo page lets a user enter lead details, click **Process Lead**, and view:
 - Follow-up message draft
 - Saved output path
 
+Open the saved lead review history:
+
+```text
+http://127.0.0.1:8000/history
+```
+
+The history page reads saved JSON outputs from `data/outputs/` and shows:
+
+- Processed time
+- Contact and company
+- Hot/warm/cold classification
+- Lead score and rating
+- Recommended next action
+- Saved output file name
+
+History is also available as JSON:
+
+```text
+http://127.0.0.1:8000/api/history
+```
+
 Open the interactive API docs:
 
 ```text
@@ -317,6 +342,8 @@ The current tests cover:
 
 - API health endpoint
 - Browser demo page
+- Saved lead history page
+- Saved lead history API
 - Invalid webhook lead validation
 - Lead JSON loading
 - Missing lead file handling
@@ -368,6 +395,7 @@ POST /webhooks/leads
 13. n8n, Make.com, and Zapier documentation
 14. README polish for GitHub portfolio presentation
 15. Simple FastAPI browser demo and CRM-ready output block
+16. Saved lead review history page and history API
 
 ## Portfolio Talking Point
 

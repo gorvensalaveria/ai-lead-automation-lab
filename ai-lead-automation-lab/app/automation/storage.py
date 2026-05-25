@@ -21,6 +21,68 @@ def save_output(result: dict[str, Any], output_dir: str | Path = "data/outputs")
     return file_path
 
 
+def list_saved_outputs(output_dir: str | Path = "data/outputs") -> list[dict[str, Any]]:
+    """Return saved automation outputs as compact history rows."""
+    output_path = Path(output_dir)
+    if not output_path.exists():
+        return []
+
+    history_rows = []
+    for file_path in output_path.glob("*.json"):
+        try:
+            result = json.loads(file_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+
+        history_rows.append(build_history_row(result=result, file_path=file_path))
+
+    return sorted(
+        history_rows,
+        key=lambda row: row["processed_at"],
+        reverse=True,
+    )
+
+
+def build_history_row(result: dict[str, Any], file_path: Path) -> dict[str, Any]:
+    """Build one compact row for history and future exports."""
+    lead = result.get("lead", {})
+    contact = lead.get("contact", {})
+    lead_details = lead.get("lead_details", {})
+    ai_outputs = result.get("ai_outputs", {})
+    score = ai_outputs.get("score", {})
+    crm_ready = result.get("crm_ready", {})
+
+    contact_name = crm_ready.get("contact_name") or (
+        f"{contact.get('first_name', '')} {contact.get('last_name', '')}".strip()
+    )
+
+    return {
+        "file_name": file_path.name,
+        "output_path": str(file_path),
+        "processed_at": crm_ready.get("processed_at", result.get("processed_at", "")),
+        "lead_id": crm_ready.get("lead_id", lead.get("lead_id", "")),
+        "contact_name": contact_name,
+        "company": crm_ready.get("company", contact.get("company", "")),
+        "email": crm_ready.get("email", contact.get("email", "")),
+        "business_type": crm_ready.get("business_type", lead.get("business_type", "")),
+        "service_interest": crm_ready.get(
+            "service_interest",
+            lead_details.get("service_interest", ""),
+        ),
+        "classification": crm_ready.get(
+            "classification",
+            ai_outputs.get("classification", ""),
+        ),
+        "lead_score": crm_ready.get("lead_score", score.get("total_score", "")),
+        "max_score": crm_ready.get("max_score", score.get("max_score", "")),
+        "lead_rating": crm_ready.get("lead_rating", score.get("rating", "")),
+        "recommended_next_action": crm_ready.get(
+            "recommended_next_action",
+            get_recommended_next_action(ai_outputs.get("classification", "")),
+        ),
+    }
+
+
 def build_result(
     lead: dict[str, Any],
     summary: str,

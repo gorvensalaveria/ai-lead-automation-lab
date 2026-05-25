@@ -1,6 +1,6 @@
 import json
 
-from app.automation.storage import build_result, save_output
+from app.automation.storage import build_result, list_saved_outputs, save_output
 
 
 def sample_lead() -> dict:
@@ -80,3 +80,23 @@ def test_save_output_writes_result_to_json_file(tmp_path):
     assert saved_result["lead"]["lead_id"] == "lead_test"
     assert saved_result["ai_outputs"]["classification"] == "hot"
     assert saved_result["crm_ready"]["classification"] == "hot"
+
+
+def test_list_saved_outputs_returns_history_rows(tmp_path):
+    result = build_result(
+        lead=sample_lead(),
+        summary="Ana wants lead automation.",
+        classification="hot",
+        score=sample_score(),
+        follow_up_message="Hi Ana, thanks for reaching out.",
+    )
+    save_output(result, output_dir=tmp_path)
+
+    history_rows = list_saved_outputs(output_dir=tmp_path)
+
+    assert len(history_rows) == 1
+    assert history_rows[0]["contact_name"] == "Ana Santos"
+    assert history_rows[0]["company"] == "Santos Software"
+    assert history_rows[0]["classification"] == "hot"
+    assert history_rows[0]["lead_score"] == 100
+    assert history_rows[0]["file_name"].startswith("lead_test_")

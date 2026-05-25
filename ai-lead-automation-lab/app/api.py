@@ -8,8 +8,10 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.automation.logger import setup_logger
+from app.automation.storage import list_saved_outputs
 from app.automation.workflow import process_lead
 from app.demo_page import render_demo_page
+from app.history_page import render_history_page
 
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -39,6 +41,18 @@ def demo_page() -> str:
 def health_check() -> dict[str, str]:
     """Return a simple API health check."""
     return {"status": "ok"}
+
+
+@app.get("/history", response_class=HTMLResponse)
+def lead_history_page() -> str:
+    """Serve a browser page for reviewing saved processed leads."""
+    return render_history_page(list_saved_outputs())
+
+
+@app.get("/api/history")
+def lead_history_api() -> dict[str, Any]:
+    """Return saved processed lead history as JSON."""
+    return {"leads": list_saved_outputs()}
 
 
 @app.post("/webhooks/leads")
