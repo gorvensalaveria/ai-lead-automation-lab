@@ -43,6 +43,33 @@ def list_saved_outputs(output_dir: str | Path = "data/outputs") -> list[dict[str
     )
 
 
+def load_saved_output(
+    file_name: str,
+    output_dir: str | Path = "data/outputs",
+) -> dict[str, Any]:
+    """Load one saved automation output by file name."""
+    output_path = Path(output_dir)
+    file_path = get_safe_output_file_path(file_name=file_name, output_path=output_path)
+
+    if not file_path.exists():
+        raise FileNotFoundError(f"Saved output not found: {file_name}")
+
+    try:
+        return json.loads(file_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise ValueError(f"Saved output is not valid JSON: {file_name}") from error
+
+
+def get_safe_output_file_path(file_name: str, output_path: Path) -> Path:
+    """Return a safe JSON output path without allowing path traversal."""
+    requested_path = Path(file_name)
+
+    if requested_path.name != file_name or requested_path.suffix != ".json":
+        raise ValueError("Saved output file name must be a JSON file name only.")
+
+    return output_path / requested_path.name
+
+
 def build_history_row(result: dict[str, Any], file_path: Path) -> dict[str, Any]:
     """Build one compact row for history and future exports."""
     lead = result.get("lead", {})

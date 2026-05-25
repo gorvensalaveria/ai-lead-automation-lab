@@ -46,7 +46,18 @@ def test_history_page_returns_html_without_openai_call():
     assert response.status_code == 200
     assert "Lead Review History" in response.text
     assert "Processed Lead History" in response.text
+    assert "history-filters" in response.text
+    assert "history-filter-link" in response.text
+    assert "Filter by classification" in response.text
     assert 'href="/demo"' in response.text
+
+
+def test_history_page_accepts_filter_and_page_query_params():
+    response = client.get("/history?classification=warm&page=2")
+
+    assert response.status_code == 200
+    assert "Lead Review History" in response.text
+    assert "history-filter-link active" in response.text
 
 
 def test_history_api_returns_leads_list_without_openai_call():
@@ -55,6 +66,20 @@ def test_history_api_returns_leads_list_without_openai_call():
     assert response.status_code == 200
     assert "leads" in response.json()
     assert isinstance(response.json()["leads"], list)
+
+
+def test_history_detail_page_returns_404_for_missing_output():
+    response = client.get("/history/missing-output.json")
+
+    assert response.status_code == 404
+    assert "Saved output not found" in response.json()["detail"]
+
+
+def test_history_detail_api_rejects_non_json_file_name():
+    response = client.get("/api/history/missing-output.txt")
+
+    assert response.status_code == 400
+    assert "JSON file name only" in response.json()["detail"]
 
 
 def test_lead_webhook_rejects_invalid_lead_without_openai_call():

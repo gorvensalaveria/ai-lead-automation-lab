@@ -275,8 +275,9 @@ The history page reads saved JSON outputs from `data/outputs/` and shows:
 - Contact and company
 - Hot/warm/cold classification
 - Lead score and rating
-- Recommended next action
 - Saved output file name
+
+The history page shows 5 leads per page and includes page-number pagination plus hot, warm, and cold filters.
 
 History is also available as JSON:
 

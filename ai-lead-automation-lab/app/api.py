@@ -8,10 +8,10 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.automation.logger import setup_logger
-from app.automation.storage import list_saved_outputs
+from app.automation.storage import list_saved_outputs, load_saved_output
 from app.automation.workflow import process_lead
 from app.demo_page import render_demo_page
-from app.history_page import render_history_page
+from app.history_page import render_history_detail_page, render_history_page
 
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -44,15 +44,43 @@ def health_check() -> dict[str, str]:
 
 
 @app.get("/history", response_class=HTMLResponse)
-def lead_history_page() -> str:
+def lead_history_page(classification: str = "all", page: int = 1) -> str:
     """Serve a browser page for reviewing saved processed leads."""
-    return render_history_page(list_saved_outputs())
+    return render_history_page(
+        history_rows=list_saved_outputs(),
+        selected_classification=classification,
+        page=page,
+    )
 
 
 @app.get("/api/history")
 def lead_history_api() -> dict[str, Any]:
     """Return saved processed lead history as JSON."""
     return {"leads": list_saved_outputs()}
+
+
+@app.get("/history/{file_name}", response_class=HTMLResponse)
+def lead_history_detail_page(file_name: str) -> str:
+    """Serve a browser page for reviewing one saved processed lead."""
+    try:
+        result = load_saved_output(file_name)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+    return render_history_detail_page(result=result, file_name=file_name)
+
+
+@app.get("/api/history/{file_name}")
+def lead_history_detail_api(file_name: str) -> dict[str, Any]:
+    """Return one saved processed lead result as JSON."""
+    try:
+        return load_saved_output(file_name)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
 
 
 @app.post("/webhooks/leads")

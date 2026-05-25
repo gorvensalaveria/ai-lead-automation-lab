@@ -1,6 +1,12 @@
 import json
+import pytest
 
-from app.automation.storage import build_result, list_saved_outputs, save_output
+from app.automation.storage import (
+    build_result,
+    list_saved_outputs,
+    load_saved_output,
+    save_output,
+)
 
 
 def sample_lead() -> dict:
@@ -100,3 +106,29 @@ def test_list_saved_outputs_returns_history_rows(tmp_path):
     assert history_rows[0]["classification"] == "hot"
     assert history_rows[0]["lead_score"] == 100
     assert history_rows[0]["file_name"].startswith("lead_test_")
+
+
+def test_load_saved_output_returns_saved_result(tmp_path):
+    result = build_result(
+        lead=sample_lead(),
+        summary="Ana wants lead automation.",
+        classification="hot",
+        score=sample_score(),
+        follow_up_message="Hi Ana, thanks for reaching out.",
+    )
+    file_path = save_output(result, output_dir=tmp_path)
+
+    saved_result = load_saved_output(file_path.name, output_dir=tmp_path)
+
+    assert saved_result["lead"]["lead_id"] == "lead_test"
+    assert saved_result["crm_ready"]["contact_name"] == "Ana Santos"
+
+
+def test_load_saved_output_rejects_path_traversal(tmp_path):
+    with pytest.raises(ValueError):
+        load_saved_output("../secret.json", output_dir=tmp_path)
+
+
+def test_load_saved_output_rejects_non_json_file_name(tmp_path):
+    with pytest.raises(ValueError):
+        load_saved_output("lead_test.txt", output_dir=tmp_path)
