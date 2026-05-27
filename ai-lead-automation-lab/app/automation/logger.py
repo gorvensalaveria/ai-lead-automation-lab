@@ -1,7 +1,9 @@
 """Logging setup for the local automation workflow."""
 
+import json
 import logging
 from pathlib import Path
+from typing import Any
 
 
 LOG_FILE = Path("logs/app.log")
@@ -27,3 +29,16 @@ def setup_logger(name: str = "ai_lead_automation") -> logging.Logger:
     logger.addHandler(file_handler)
 
     return logger
+
+
+def log_structured_event(
+    logger: logging.Logger,
+    event: str,
+    **fields: Any,
+) -> None:
+    """Write one structured JSON event to the application log."""
+    payload = {
+        "event": event,
+        **fields,
+    }
+    logger.info(json.dumps(payload, default=str, sort_keys=True))

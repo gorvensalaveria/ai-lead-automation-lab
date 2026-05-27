@@ -91,7 +91,7 @@ def score_intent(message: str, classification: str) -> int:
         "request",
         "help",
         "automation",
-        "demo",
+        "walkthrough",
         "pricing",
     ]
 

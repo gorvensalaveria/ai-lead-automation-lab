@@ -1,17 +1,17 @@
-    const demoLeads = {
+    const sampleLeads = {
       hot: {
         first_name: "Noah",
         last_name: "Mitchell",
         email: "noah.mitchell@example.com",
         phone: "+1 646 555 0142",
         company: "PipelineMetric",
-        source: "demo_request_form",
+        source: "consultation_request_form",
         business_type: "saas",
         timeline: "urgent",
         budget_range: "USD 2,000 - USD 5,000",
         preferred_contact_method: "phone",
         service_interest: "sales workflow automation",
-        message: "We need a better way to qualify inbound demo requests before our sales team spends time on calls. We use HubSpot and Slack."
+        message: "We need a better way to qualify inbound sales inquiries before our sales team spends time on calls. We use HubSpot and Slack."
       },
       warm: {
         first_name: "Melissa",
@@ -47,11 +47,11 @@
     const status = document.querySelector("#status");
     const results = document.querySelector("#results");
     const submitButton = document.querySelector("#submit-button");
-    const demoButtons = document.querySelectorAll("[data-demo]");
+    const sampleButtons = document.querySelectorAll("[data-sample]");
     const emptyResultsHtml = results.innerHTML;
 
-    function fillDemoLead(kind) {
-      const lead = demoLeads[kind];
+    function fillSampleLead(kind) {
+      const lead = sampleLeads[kind];
 
       if (!lead) {
         return;
@@ -66,8 +66,8 @@
         }
       });
 
-      demoButtons.forEach((button) => {
-        button.classList.toggle("active", button.dataset.demo === kind);
+      sampleButtons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.sample === kind);
       });
 
       results.className = "result-empty";
@@ -140,6 +140,8 @@
       const classificationReason = getClassificationReason(classificationClass, score);
       const contactName = crm.contact_name || "Processed lead";
       const company = crm.company || "Unknown company";
+      const savedFileName = getSavedFileName(data.output_path);
+      const detailLink = savedFileName ? `/history/${encodeURIComponent(savedFileName)}` : "";
 
       results.className = "result-stack";
       results.innerHTML = `
@@ -210,14 +212,65 @@
         <div class="result-section">
           <h3>Saved Output Path</h3>
           <div class="path-box">${escapeHtml(data.output_path)}</div>
+          ${
+            detailLink
+              ? `<a class="detail-link" href="${detailLink}">Open saved lead details</a>`
+              : ""
+          }
         </div>
       `;
     }
 
-    demoButtons.forEach((button) => {
+    function getSavedFileName(outputPath) {
+      if (!outputPath) {
+        return "";
+      }
+
+      return String(outputPath).split(/[\\/]/).pop();
+    }
+
+    function getResponseErrorMessage(response, data) {
+      const detail = data && typeof data.detail === "string" ? data.detail : "";
+      const fallback = "Unable to process lead right now. Please try again.";
+      const message = detail || fallback;
+      const requestId = response.headers.get("X-Request-ID");
+      const retryAfter = response.headers.get("Retry-After");
+
+      if (response.status === 429) {
+        return retryAfter
+          ? `Too many lead processing attempts. Please wait ${retryAfter} seconds before trying again.`
+          : "Too many lead processing attempts. Please wait before trying again.";
+      }
+
+      if (response.status >= 500 && requestId && !message.includes("Reference ID:")) {
+        return `${message} Reference ID: ${requestId}`;
+      }
+
+      return message;
+    }
+
+    function applyRetryCooldown(response) {
+      const retryAfter = Number(response.headers.get("Retry-After") || 0);
+
+      if (!Number.isFinite(retryAfter) || retryAfter <= 0) {
+        return false;
+      }
+
+      submitButton.disabled = true;
+      submitButton.textContent = `Try again in ${retryAfter}s`;
+
+      window.setTimeout(() => {
+        submitButton.disabled = false;
+        submitButton.textContent = "Process Lead";
+      }, retryAfter * 1000);
+
+      return true;
+    }
+
+    sampleButtons.forEach((button) => {
       button.addEventListener("click", (event) => {
         event.preventDefault();
-        fillDemoLead(button.dataset.demo);
+        fillSampleLead(button.dataset.sample);
       });
     });
 
@@ -239,7 +292,8 @@
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.detail || "Unable to process lead.");
+          applyRetryCooldown(response);
+          throw new Error(getResponseErrorMessage(response, data));
         }
 
         status.textContent = "Lead processed and saved.";
@@ -248,8 +302,11 @@
         status.textContent = error.message;
         status.classList.add("error");
       } finally {
-        submitButton.disabled = false;
+        if (!submitButton.textContent.startsWith("Try again in")) {
+          submitButton.disabled = false;
+          submitButton.textContent = "Process Lead";
+        }
       }
     });
 
-    fillDemoLead("hot");
+    fillSampleLead("hot");

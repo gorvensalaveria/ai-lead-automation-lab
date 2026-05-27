@@ -1,6 +1,6 @@
 # Sample Lead Data
 
-This folder contains example lead submissions for local testing, webhook testing, and the browser demo.
+This folder contains example lead submissions for local testing, webhook testing, and the browser interface.
 
 In a real business, leads may come from:
 
@@ -11,10 +11,10 @@ In a real business, leads may come from:
 - CRM forms
 - Booking pages
 
-Demo scenario files:
+Sample scenario files:
 
-- `demo_hot_saas.json`
-- `demo_warm_coaching.json`
-- `demo_cold_general.json`
+- `sample_hot_saas.json`
+- `sample_warm_coaching.json`
+- `sample_cold_general.json`
 
-The same lead schema is used by the terminal workflow, FastAPI webhook, and web demo.
+The same lead schema is used by the terminal workflow, FastAPI webhook, and lead intake workspace.

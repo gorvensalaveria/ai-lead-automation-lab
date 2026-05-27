@@ -41,7 +41,7 @@ For real n8n cloud usage, the API must be deployed or exposed through a secure t
 ```json
 {
   "lead_id": "lead_004",
-  "source": "demo_request_form",
+  "source": "consultation_request_form",
   "submitted_at": "2026-05-21T15:30:00+08:00",
   "business_type": "saas",
   "contact": {
@@ -53,7 +53,7 @@ For real n8n cloud usage, the API must be deployed or exposed through a secure t
   },
   "lead_details": {
     "service_interest": "sales workflow automation",
-    "message": "We need a better way to qualify inbound demo requests before our sales team spends time on calls. We use HubSpot and Slack.",
+    "message": "We need a better way to qualify inbound sales inquiries before our sales team spends time on calls. We use HubSpot and Slack.",
     "budget_range": "USD 2,000 - USD 5,000",
     "timeline": "urgent",
     "preferred_contact_method": "phone"

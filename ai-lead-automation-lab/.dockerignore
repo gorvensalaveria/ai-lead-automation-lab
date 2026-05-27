@@ -1,0 +1,16 @@
+.env
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+.git/
+.gitignore
+logs/*.log
+data/outputs/*.json
+data/outputs/*.db
+docs/screenshots/

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AI Lead Qualification Assistant</title>
-  <link rel="stylesheet" href="/static/demo.css">
+  <link rel="stylesheet" href="/static/lead-intake.css">
 </head>
 <body>
   <header>
@@ -14,7 +14,7 @@
         <h1>AI Lead Qualification Assistant</h1>
         <p class="subtitle">Turn inbound leads into summaries, scores, recommended next actions, and ready-to-send follow-ups.</p>
       </div>
-      <nav class="header-actions" aria-label="Demo navigation">
+      <nav class="header-actions" aria-label="Lead intake navigation">
         <a class="nav-link" href="/history">Review History</a>
       </nav>
     </div>
@@ -48,12 +48,12 @@
           </div>
         </div>
 
-        <div class="demo-group">
-          <div class="demo-label">Try Sample Leads</div>
-          <div class="demo-buttons" aria-label="Demo leads">
-            <button class="secondary" type="button" data-demo="hot">Hot SaaS Demo Request</button>
-            <button class="secondary" type="button" data-demo="warm">Warm Coaching Inquiry</button>
-            <button class="secondary" type="button" data-demo="cold">Cold General Inquiry</button>
+        <div class="sample-group">
+          <div class="sample-label">Try Sample Leads</div>
+          <div class="sample-buttons" aria-label="Sample leads">
+            <button class="secondary" type="button" data-sample="hot">Hot SaaS Inquiry</button>
+            <button class="secondary" type="button" data-sample="warm">Warm Coaching Inquiry</button>
+            <button class="secondary" type="button" data-sample="cold">Cold General Inquiry</button>
           </div>
         </div>
 
@@ -77,7 +77,7 @@
             <label>Source
               <select name="source" required>
                 <option value="website_form">Website form</option>
-                <option value="demo_request_form">Demo request form</option>
+                <option value="consultation_request_form">Consultation request form</option>
                 <option value="facebook_ad">Facebook ad</option>
                 <option value="email_inquiry">Email inquiry</option>
                 <option value="booking_page">Booking page</option>
@@ -175,9 +175,9 @@
   </main>
 
   <footer>
-    Demo built with Python, FastAPI, OpenAI API, JSON storage, and pytest.
+    Built with Python, FastAPI, OpenAI API, JSON storage, and pytest.
   </footer>
 
-  <script src="/static/demo.js"></script>
+  <script src="/static/lead-intake.js"></script>
 </body>
 </html>
