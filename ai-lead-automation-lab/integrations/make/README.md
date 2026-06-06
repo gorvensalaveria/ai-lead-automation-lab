@@ -1,6 +1,6 @@
 # Make.com Integration Notes
 
-Milestone 13 does not add a live Make.com scenario. This document explains how Make.com could connect to the FastAPI webhook added in Milestone 12.
+This document explains how Make.com can connect to the AI Lead Intake Automation System through the FastAPI webhook endpoint.
 
 ## Goal
 
@@ -20,6 +20,8 @@ POST /webhooks/leads
 6. Set body type to JSON.
 7. Map lead fields into the expected request body.
 8. Use the response to create a CRM note, send an email draft, notify Slack, or update Airtable.
+
+If `GOOGLE_SHEETS_AUTO_APPEND=true`, the backend can also append the processed lead to Google Sheets automatically after saving it locally.
 
 ## Local Development URL
 

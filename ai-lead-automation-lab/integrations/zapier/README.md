@@ -1,6 +1,6 @@
 # Zapier Integration Notes
 
-Milestone 13 does not add a live Zapier Zap. This document explains how Zapier could connect to the FastAPI webhook added in Milestone 12.
+This document explains how Zapier can connect to the AI Lead Intake Automation System through the FastAPI webhook endpoint.
 
 ## Goal
 
@@ -19,6 +19,8 @@ POST /webhooks/leads
 5. Set payload type to JSON.
 6. Map the lead fields into the expected request body.
 7. Use the response in later Zap steps, such as Gmail, Slack, Google Sheets, Airtable, or a CRM.
+
+If `GOOGLE_SHEETS_AUTO_APPEND=true`, the backend can also append the processed lead to Google Sheets automatically after saving it locally.
 
 ## Local Development URL
 

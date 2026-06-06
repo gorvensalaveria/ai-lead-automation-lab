@@ -107,6 +107,16 @@ Recommended Render setup:
   - `SUMMARY_PROMPT_VERSION`
   - `CLASSIFICATION_PROMPT_VERSION`
   - `FOLLOW_UP_PROMPT_VERSION`
+  - `GOOGLE_SHEETS_ENABLED=true`
+  - `GOOGLE_SHEETS_AUTO_APPEND=true`
+  - `GOOGLE_SHEETS_SPREADSHEET_ID`
+  - `GOOGLE_SHEETS_RANGE=Leads!A:T`
+  - `GOOGLE_SHEETS_VALUE_INPUT_OPTION=RAW`
+  - `GOOGLE_SERVICE_ACCOUNT_JSON`
+
+For Render, use `GOOGLE_SERVICE_ACCOUNT_JSON` and paste the full service account JSON as the value. Do not use a local path such as `/Users/your-name/Downloads/service-account.json`, because that file only exists on your computer.
+
+After adding or changing Render environment variables, redeploy the service before testing Google Sheets export.
 
 If using Render without Docker, use:
 
@@ -147,7 +157,7 @@ For persistent lead history, configure a Railway volume or move saved lead stora
 
 ## Storage Notes
 
-The current product preview uses:
+The current production deployment uses:
 
 - JSON files as full audit records
 - SQLite as a compact lead history and review-status index
@@ -155,6 +165,8 @@ The current product preview uses:
 - AI metadata for model, workflow version, prompt versions, and generation timestamps
 - CSV export for spreadsheet or CRM handoff
 - Google Sheets preview endpoints for handoff-ready rows and append payloads
+- Google Sheets live append for manual and automatic spreadsheet export
+- Email-based duplicate prevention for Google Sheets handoff, with lead ID as fallback
 - System status page and detailed health endpoint for operations readiness
 - Privacy-safe masked lead detail views
 - Archive workflow that preserves saved audit history
@@ -163,13 +175,13 @@ The current product preview uses:
 - OpenAI retry/backoff handling for rate limits and transient API failures
 - Inbound lead-processing rate limiting for public endpoint protection
 
-This is appropriate for a local portfolio product and small self-hosted preview. For hosted multi-user production use, move from local SQLite/files to managed PostgreSQL or another persistent database.
+This is appropriate for a single-service production deployment. For hosted multi-user production use, move from local SQLite/files to managed PostgreSQL or another persistent database.
 
 The inbound rate limiter is in-memory and appropriate for one running application instance. For multi-instance production deployments, replace it with Redis or another shared store so limits apply across all instances.
 
 ## Integration Notes
 
-The Google Sheets adapter includes preview endpoints and a live append endpoint. Preview endpoints work without Google credentials:
+The Google Sheets adapter includes preview endpoints, a live append endpoint, and optional automatic append after lead processing. Preview endpoints work without Google credentials:
 
 ```text
 GET /api/integrations/google-sheets/preview
@@ -186,18 +198,22 @@ Required environment variables:
 
 ```text
 GOOGLE_SHEETS_ENABLED=true
+GOOGLE_SHEETS_AUTO_APPEND=true
 GOOGLE_SHEETS_SPREADSHEET_ID=your_google_sheet_id_here
 GOOGLE_SHEETS_RANGE=Leads!A:T
+GOOGLE_SHEETS_VALUE_INPUT_OPTION=RAW
 GOOGLE_SERVICE_ACCOUNT_FILE=/absolute/path/to/service-account.json
 ```
 
 Use `GOOGLE_SERVICE_ACCOUNT_JSON` instead of `GOOGLE_SERVICE_ACCOUNT_FILE` for hosted deployments that store service account credentials as one secret.
 
-Set `GOOGLE_SHEETS_AUTO_APPEND=true` only when every processed webhook lead should be appended automatically after local saving.
+Set `GOOGLE_SHEETS_AUTO_APPEND=true` when every processed webhook lead should be appended automatically after local saving. The app prevents duplicate Google Sheets handoff by checking email first, then lead ID if email is unavailable.
+
+`GOOGLE_SHEETS_VALUE_INPUT_OPTION=RAW` preserves phone numbers and AI-generated text as plain spreadsheet values.
 
 ## Privacy Notes
 
-The portfolio version keeps reviewer access open, but includes privacy-aware controls:
+The production system includes privacy-aware controls:
 
 - Detail pages support masked contact data with `?privacy=masked`.
 - Archive actions remove a lead from active review queues without deleting the saved audit trail.
@@ -205,9 +221,9 @@ The portfolio version keeps reviewer access open, but includes privacy-aware con
 
 ## Security Notes
 
-The portfolio version is intentionally open so reviewers and clients can access it quickly.
+The current deployment keeps reviewer access open unless you add authentication at the platform or application layer.
 
-For a real deployment with live customer data, add:
+For deployments with live customer data, add:
 
 - Authentication or API gateway protection
 - Role-based access for lead history and detail pages
@@ -222,12 +238,16 @@ For a real deployment with live customer data, add:
 - Confirm OpenAI retry settings are set or defaults are acceptable.
 - Confirm lead-processing rate-limit settings are set or defaults are acceptable.
 - Set `APP_ENV=production`.
+- Set Google Sheets environment variables when live spreadsheet export is required.
 - Confirm `/health` returns `{"status":"ok"}`.
 - Confirm `/health` returns an `X-Request-ID` response header.
 - Confirm `/health/details` returns storage, SQLite, model, and workflow checks.
 - Confirm `/lead-intake` loads.
 - Confirm `/system-status` loads.
 - Confirm `/api/integrations/google-sheets/preview` returns spreadsheet-ready rows.
+- Confirm `POST /api/integrations/google-sheets/append/{saved_output_file_name}.json` appends one test row.
+- Confirm clicking **Process Lead** auto-appends to Google Sheets when `GOOGLE_SHEETS_AUTO_APPEND=true`.
+- Confirm processing the same email again skips duplicate Google Sheets export.
 - Confirm `/history/{saved_output_file_name}.json?privacy=masked` masks email and phone fields.
 - Confirm `/api/history/bulk-status` updates selected saved leads in a test environment.
 - Confirm `data/outputs/` or the production database persists across restarts.

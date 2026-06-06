@@ -1,14 +1,14 @@
 # AI Lead Intake Automation System
 
-AI automation portfolio project that processes inbound leads, summarizes business needs, classifies lead quality, calculates a lead score, drafts a follow-up message, and saves the result for review or future CRM integration.
+Production AI automation system that processes inbound leads, summarizes business needs, classifies lead quality, calculates a lead score, drafts a follow-up message, saves the result for review, and sends CRM-ready handoff fields to Google Sheets.
 
-## Portfolio Summary
+## Product Summary
 
 **Project name:** AI Lead Intake Automation System
 
 **Repository name:** `ai-lead-automation-lab`
 
-**Short description:** AI automation system that processes leads, summarizes intent, scores quality, drafts follow-up messages, stores CRM-ready outputs, and provides a review dashboard with SQLite-backed status tracking, AI metadata, audit events, CSV export, live Google Sheets append support, operations readiness checks, privacy-aware review controls, OpenAI retry/backoff handling, and structured request observability.
+**Short description:** AI automation system that processes leads, summarizes intent, scores quality, drafts follow-up messages, stores CRM-ready outputs, and provides a review dashboard with SQLite-backed status tracking, AI metadata, audit events, CSV export, automatic Google Sheets export, email-based duplicate prevention, operations readiness checks, privacy-aware review controls, OpenAI retry/backoff handling, and structured request observability.
 
 **Target role:** AI Automation Specialist / AI Automation Developer
 
@@ -42,13 +42,15 @@ The workflow can:
 16. Preview Google Sheets-ready rows and append saved leads to a live Google Sheet when configured.
 17. Open a detail review page for each saved lead, including AI summary, score breakdown, follow-up draft, review workflow actions, AI metadata with readable fallbacks, grouped activity timeline, and saved JSON.
 18. Show a system status page and detailed health endpoint for storage, SQLite, model, workflow version, and latest activity checks.
-19. Mask email and phone data on lead detail pages for privacy-safe portfolio review.
+19. Mask email and phone data on lead detail pages for privacy-safe review.
 20. Archive saved leads without deleting their audit trail.
 21. Retry transient OpenAI API failures with exponential backoff and jitter.
 22. Rate-limit inbound lead processing requests to protect API credits on public deployments.
 23. Add request IDs to API responses and structured JSON request logs for traceability.
 24. Return client-safe AI processing errors while keeping raw provider failures in server logs.
-25. Expose the workflow through a terminal command, webhook API, browser interface, history dashboard, detail review page, JSON history API, review status API, bulk review API, archive API, audit event API, CSV export endpoint, Google Sheets preview and append endpoints, and operations readiness endpoints.
+25. Automatically append processed leads to Google Sheets when enabled.
+26. Prevent duplicate Google Sheets exports by checking email first, then lead ID as a fallback.
+27. Expose the workflow through a terminal command, webhook API, browser interface, history dashboard, detail review page, JSON history API, review status API, bulk review API, archive API, audit event API, CSV export endpoint, Google Sheets preview and append endpoints, and operations readiness endpoints.
 
 ## Architecture Overview
 
@@ -78,7 +80,7 @@ Local storage and review surfaces
   ├─ AI processing metadata
   ├─ Audit event timeline
   ├─ CSV export
-  ├─ Google Sheets preview and live append
+  ├─ Google Sheets preview, manual append, and automatic append
   ├─ Operations readiness checks
   └─ Privacy-safe review controls
 ```
@@ -87,7 +89,7 @@ The workflow logic is shared by the terminal command and FastAPI API, so the sam
 
 ## Business Impact
 
-This project models how a business could reduce manual lead review work while keeping a human in control of final outreach.
+This system helps a business reduce manual lead review work while keeping a human in control of final outreach.
 
 - Speeds up first-pass lead qualification by summarizing intent and classifying each lead.
 - Standardizes scoring with a repeatable fit, urgency, budget, and intent breakdown.
@@ -101,13 +103,14 @@ This project models how a business could reduce manual lead review work while ke
 - Protects live deployments from repeated lead-processing submissions with inbound rate limiting.
 - Improves debugging and production traceability with request IDs and structured JSON request logs.
 - Keeps browser error messages safe for clients by hiding raw AI provider payloads and API-key details.
+- Sends processed leads to Google Sheets automatically when enabled, while preventing duplicate handoffs by email.
 - Supports common automation entry points such as forms, webhook tools, and future CRM integrations.
 
 ## Current Status
 
-Current milestone: **Portfolio-ready product experience**
+Current milestone: **Production-ready AI automation system**
 
-The core portfolio version is complete. It includes the local terminal workflow, FastAPI webhook endpoint, browser interface page, saved lead history dashboard, detail review page, SQLite-backed status tracking, bulk review actions, AI metadata, audit event timeline, CSV export, Google Sheets handoff previews and live append support, system status checks, masked contact-data review mode, archive workflow, OpenAI retry/backoff handling, inbound lead-processing rate limiting, request IDs, structured JSON request logs, local JSON output storage, pytest tests, and documentation for future n8n, Make.com, and Zapier connections.
+The production version is complete for a single-service AI lead intake workflow. It includes the local terminal workflow, FastAPI webhook endpoint, browser interface page, saved lead history dashboard, detail review page, SQLite-backed status tracking, bulk review actions, AI metadata, audit event timeline, CSV export, Google Sheets handoff previews, manual Google Sheets append, automatic Google Sheets append after lead processing, email-based duplicate prevention, system status checks, masked contact-data review mode, archive workflow, OpenAI retry/backoff handling, inbound lead-processing rate limiting, request IDs, structured JSON request logs, local JSON output storage, pytest tests, and documentation for future n8n, Make.com, and Zapier connections.
 
 Google Sheets is implemented as the first live external integration. Other external integrations such as n8n, Make.com, Zapier, HubSpot, Airtable, Slack, and Gmail are documented or planned as future production upgrades.
 
@@ -121,12 +124,14 @@ Deployment notes are available in [DEPLOYMENT.md](DEPLOYMENT.md).
 4. The history dashboard gives a human reviewer analytics, search, filters, sorting, CSV export, and quick access to each lead.
 5. Reviewers can select several leads and bulk-mark them as reviewed, contacted, needing follow-up, or archived.
 6. The detail page shows the complete handoff: score, classification, next action, AI summary, follow-up draft, CRM-ready fields, saved JSON, review status actions, and activity timeline.
-7. Integration endpoints expose flat spreadsheet rows, Google Sheets append payload previews, and a live Google Sheets append action when credentials are configured.
-8. The system status page shows whether storage, SQLite, model configuration, workflow version, and latest activity are ready.
-9. Privacy controls let reviewers mask contact data or archive a lead while keeping audit history available.
-10. OpenAI summary, classification, and follow-up generation use controlled retries for rate limits and temporary API failures.
-11. Public lead processing requests are rate-limited per client before expensive AI calls run.
-12. Every API request receives an `X-Request-ID` response header and writes a structured request log entry.
+7. Integration endpoints expose flat spreadsheet rows, Google Sheets append payload previews, and live Google Sheets append actions when credentials are configured.
+8. When `GOOGLE_SHEETS_AUTO_APPEND=true`, the Process Lead workflow automatically sends the processed lead to Google Sheets after saving it locally.
+9. Google Sheets export prevents duplicate CRM handoff by checking whether the same email was already exported. If email is unavailable, it falls back to lead ID.
+10. The system status page shows whether storage, SQLite, model configuration, workflow version, and latest activity are ready.
+11. Privacy controls let reviewers mask contact data or archive a lead while keeping audit history available.
+12. OpenAI summary, classification, and follow-up generation use controlled retries for rate limits and temporary API failures.
+13. Public lead processing requests are rate-limited per client before expensive AI calls run.
+14. Every API request receives an `X-Request-ID` response header and writes a structured request log entry.
 
 ## Product Screenshots
 
@@ -159,6 +164,8 @@ Deployment notes are available in [DEPLOYMENT.md](DEPLOYMENT.md).
 - Inbound lead-processing rate limiting
 - CSV export
 - Google Sheets handoff payloads and live append support
+- Automatic Google Sheets export
+- Email-based duplicate prevention for CRM handoff
 - Operations status page and health checks
 - Privacy masking helpers
 - Docker
@@ -197,6 +204,8 @@ Deployment notes are available in [DEPLOYMENT.md](DEPLOYMENT.md).
 - CRM-ready handoff fields
 - CSV reporting/export
 - Google Sheets integration handoff design and live append implementation
+- Automatic spreadsheet export after lead processing
+- Duplicate handoff prevention using email and lead ID fallback
 - Operations readiness checks
 - Deployment health endpoint design
 - Privacy-safe UI rendering
@@ -276,6 +285,7 @@ ai-lead-automation-lab/
 - `GET /api/history/{file_name}/events`
 - `GET /api/integrations/google-sheets/preview`
 - `GET /api/integrations/google-sheets/preview/{file_name}`
+- `POST /api/integrations/google-sheets/append/{file_name}`
 - `POST /api/history/{file_name}/status`
 - `POST /api/history/{file_name}/archive`
 - `POST /api/history/{file_name}/events`
@@ -361,6 +371,19 @@ SUMMARY_PROMPT_VERSION=summary-v1
 CLASSIFICATION_PROMPT_VERSION=classification-v1
 FOLLOW_UP_PROMPT_VERSION=follow-up-v1
 ```
+
+To enable live Google Sheets export, add:
+
+```text
+GOOGLE_SHEETS_ENABLED=true
+GOOGLE_SHEETS_AUTO_APPEND=true
+GOOGLE_SHEETS_SPREADSHEET_ID=your_google_sheet_id_here
+GOOGLE_SHEETS_RANGE=Leads!A:T
+GOOGLE_SHEETS_VALUE_INPUT_OPTION=RAW
+GOOGLE_SERVICE_ACCOUNT_FILE=/absolute/path/to/service-account.json
+```
+
+For hosted deployments such as Render, use `GOOGLE_SERVICE_ACCOUNT_JSON` instead of `GOOGLE_SERVICE_ACCOUNT_FILE`.
 
 Do not commit `.env` to GitHub.
 
@@ -476,6 +499,8 @@ The lead intake page lets a user enter lead details, click **Process Lead**, and
 - Saved output path
 - Link to the saved lead detail review page
 
+When `GOOGLE_SHEETS_AUTO_APPEND=true`, clicking **Process Lead** also sends the processed lead to the configured Google Sheet after local saving. The app prevents duplicate Google Sheets handoffs by checking whether the lead email has already been exported. If email is unavailable, it falls back to lead ID.
+
 Open the saved lead review history:
 
 ```text
@@ -590,6 +615,8 @@ Append one saved lead to the configured live Google Sheet:
 curl -X POST http://127.0.0.1:8000/api/integrations/google-sheets/append/{saved_output_file_name}.json
 ```
 
+The live Google Sheets integration sends values with `GOOGLE_SHEETS_VALUE_INPUT_OPTION=RAW` so phone numbers and long AI-generated text are preserved as plain spreadsheet values.
+
 Open the interactive API docs:
 
 ```text
@@ -606,7 +633,7 @@ Every API response includes an `X-Request-ID` header. You can provide your own r
 
 ```bash
 curl http://127.0.0.1:8000/health \
-  -H "X-Request-ID: portfolio-check-001"
+  -H "X-Request-ID: production-check-001"
 ```
 
 Process a lead through the webhook endpoint:
@@ -646,7 +673,8 @@ The saved output includes:
 - Privacy-safe masked display support for email and phone review
 - Archived status when a lead is removed from active follow-up queues
 - Activity events for processing, viewing, copying, export, and status changes
-- Google Sheets-ready handoff fields through integration preview endpoints
+- Google Sheets-ready handoff fields through integration preview endpoints, manual append, and automatic append
+- Duplicate Google Sheets export prevention using email first and lead ID fallback
 
 Generated `.json` and `.db` output files are ignored by Git because real outputs may contain lead or customer information.
 
@@ -690,6 +718,8 @@ The current tests cover:
 - AI metadata output structure
 - Local JSON output saving
 - Google Sheets row and append payload shape
+- Google Sheets automatic append behavior
+- Google Sheets duplicate export prevention by email
 - Detailed health check and system status page
 - Masked contact rendering
 - Request ID response headers
@@ -737,7 +767,7 @@ The project includes documentation for future automation platform connections:
 - [Make.com integration notes](integrations/make/README.md)
 - [Zapier integration notes](integrations/zapier/README.md)
 
-These docs explain how each platform could send lead JSON to:
+These docs explain how each platform can send lead JSON to:
 
 ```text
 POST /webhooks/leads
@@ -753,7 +783,7 @@ POST /api/integrations/google-sheets/append/{saved_output_file_name}.json
 
 ## Limitations and Next Steps
 
-This is a portfolio-ready local product preview, not a production SaaS application. The current version is designed to show workflow design, API structure, AI processing, SQLite-backed review workflows, review UI, and exportable outputs.
+This is a production AI automation system for a single-service lead intake workflow. The current deployment is intentionally lightweight: it uses local JSON files and SQLite for saved lead records, and it expects deployment-level controls for access, secrets, and persistence.
 
 Production improvements would include:
 
@@ -781,12 +811,12 @@ Production improvements would include:
 11. pytest tests
 12. FastAPI webhook endpoints
 13. n8n, Make.com, and Zapier documentation
-14. README polish for GitHub portfolio presentation
+14. README polish for GitHub production presentation
 15. Simple FastAPI browser interface and CRM-ready output block
 16. Saved lead review history page and history API
 17. CSV export for saved lead history
 18. Saved lead detail review page with CRM-ready fields, follow-up draft copy action, and saved JSON audit view
-19. Portfolio UI polish for history dashboard, detail page, readable timestamps, and cleaner detail actions
+19. Product UI polish for history dashboard, detail page, readable timestamps, and cleaner detail actions
 20. README architecture, business impact, and limitations/next-step sections
 21. SQLite-backed saved lead index with review status tracking
 22. History dashboard analytics, search, status filtering, and sorting
@@ -803,9 +833,12 @@ Production improvements would include:
 33. Inbound lead-processing rate limiter for public deployment protection
 34. Final UI polish for responsive history analytics, wider detail review layout, grouped activity events, and metadata fallback states
 35. Client-safe AI error messaging with request references for server-side debugging
+36. Live Google Sheets append with hosted credential support
+37. Automatic Google Sheets export after lead processing
+38. Duplicate Google Sheets handoff prevention using email first and lead ID fallback
 
-## Portfolio Talking Point
+## Production Talking Point
 
 This project shows a practical AI automation workflow for businesses that receive inbound leads and need faster qualification, prioritization, queue-based review operations, human review tracking, AI output traceability, auditability, privacy-aware review, follow-up drafting, CSV reporting, spreadsheet-ready handoff, operations visibility, request traceability, rate-limit resilience, safe client-facing error handling, public endpoint protection, and CRM-ready output.
 
-It is intentionally beginner-friendly, but it uses real-world building blocks: structured JSON, OpenAI API calls, prompt-version metadata, validation, scoring logic, FastAPI webhooks, SQLite indexing, audit events, CSV export, Google Sheets handoff payloads, detailed health checks, request IDs, structured request logs, client-safe AI failure messages, OpenAI retry/backoff handling, inbound rate limiting, privacy masking, bulk review actions, archive workflow, logging, tests, and human-review UI screens.
+It uses real-world building blocks: structured JSON, OpenAI API calls, prompt-version metadata, validation, scoring logic, FastAPI webhooks, SQLite indexing, audit events, CSV export, Google Sheets handoff payloads, automatic Google Sheets export, duplicate prevention by email, detailed health checks, request IDs, structured request logs, client-safe AI failure messages, OpenAI retry/backoff handling, inbound rate limiting, privacy masking, bulk review actions, archive workflow, logging, tests, and human-review UI screens.

@@ -1,6 +1,6 @@
 # n8n Integration Notes
 
-Milestone 13 does not add a live n8n workflow. This document explains how n8n could connect to the FastAPI webhook added in Milestone 12.
+This document explains how n8n can connect to the AI Lead Intake Automation System through the FastAPI webhook endpoint.
 
 ## Goal
 
@@ -18,7 +18,7 @@ POST /webhooks/leads
 4. Set method to `POST`.
 5. Set URL to the deployed API endpoint.
 6. Send the lead payload as JSON.
-7. Use the API response to update a CRM, send a Slack alert, or create a Google Sheets row.
+7. Use the API response to update a CRM, send a Slack alert, or trigger another handoff step. If `GOOGLE_SHEETS_AUTO_APPEND=true`, the backend can also append the processed lead to Google Sheets automatically.
 
 ## Local Development URL
 
