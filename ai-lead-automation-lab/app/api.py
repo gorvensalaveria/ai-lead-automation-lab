@@ -14,6 +14,9 @@ from app.automation.storage import (
     archive_saved_output,
     build_history_csv,
     bulk_update_review_status,
+    has_exported_email_to_google_sheets,
+    has_exported_lead_to_google_sheets,
+    has_lead_event,
     list_lead_events,
     list_saved_outputs,
     load_saved_output,
@@ -21,8 +24,12 @@ from app.automation.storage import (
     update_review_status,
 )
 from app.automation.workflow import process_lead
+from app.config import GOOGLE_SHEETS_AUTO_APPEND
 from app.integrations.google_sheets import (
     GOOGLE_SHEETS_COLUMNS,
+    GoogleSheetsAppendError,
+    GoogleSheetsConfigError,
+    append_result_to_google_sheet,
     build_google_sheets_payload,
     build_google_sheets_row,
 )
@@ -276,6 +283,49 @@ def google_sheets_lead_preview(file_name: str) -> dict[str, Any]:
     }
 
 
+@app.post("/api/integrations/google-sheets/append/{file_name}")
+def google_sheets_append_saved_lead(file_name: str) -> dict[str, Any]:
+    """Append one saved lead result to the configured live Google Sheet."""
+    try:
+        result = load_saved_output(file_name)
+        duplicate_export = find_google_sheets_duplicate_export(
+            result=result,
+            file_name=file_name,
+        )
+        if duplicate_export:
+            return {
+                "integration": "google_sheets",
+                "file_name": file_name,
+                "result": {
+                    "status": "skipped",
+                    "reason": "already_exported",
+                    "detail": duplicate_export,
+                },
+            }
+
+        append_result = append_result_to_google_sheet(result)
+        record_lead_event(
+            file_name=file_name,
+            event_type="google_sheets_exported",
+            event_label="Exported to Google Sheets",
+            event_detail=append_result.get("updated_range", ""),
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except GoogleSheetsConfigError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    except GoogleSheetsAppendError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    return {
+        "integration": "google_sheets",
+        "file_name": file_name,
+        "result": append_result,
+    }
+
+
 @app.post("/api/history/{file_name}/status")
 def update_lead_review_status(file_name: str, payload: dict[str, Any]) -> dict[str, Any]:
     """Update one saved lead review status."""
@@ -373,11 +423,80 @@ def process_lead_webhook(
             detail="Unexpected error while processing lead.",
         ) from error
 
-    return {
+    google_sheets_result = append_processed_lead_to_google_sheets_if_enabled(
+        result=result,
+        output_path=str(output_path),
+    )
+
+    response_payload = {
         "status": "processed",
         "output_path": str(output_path),
         "result": result,
     }
+    if google_sheets_result:
+        response_payload["google_sheets"] = google_sheets_result
+
+    return response_payload
+
+
+def append_processed_lead_to_google_sheets_if_enabled(
+    result: dict[str, Any],
+    output_path: str,
+) -> dict[str, Any] | None:
+    """Append a newly processed lead to Google Sheets when auto-append is enabled."""
+    if not GOOGLE_SHEETS_AUTO_APPEND:
+        return None
+
+    file_name = Path(output_path).name
+    duplicate_export = find_google_sheets_duplicate_export(
+        result=result,
+        file_name=file_name,
+    )
+    if duplicate_export:
+        return {
+            "status": "skipped",
+            "reason": "already_exported",
+            "detail": duplicate_export,
+        }
+
+    try:
+        append_result = append_result_to_google_sheet(result)
+        record_lead_event(
+            file_name=file_name,
+            event_type="google_sheets_exported",
+            event_label="Auto-exported to Google Sheets",
+            event_detail=append_result.get("updated_range", ""),
+        )
+    except (GoogleSheetsConfigError, GoogleSheetsAppendError) as error:
+        log_structured_event(
+            logger=logger,
+            event="google_sheets_auto_append_failed",
+            output_path=output_path,
+            error_type=type(error).__name__,
+            error=str(error),
+        )
+        return {"status": "failed", "detail": str(error)}
+
+    return append_result
+
+
+def find_google_sheets_duplicate_export(
+    result: dict[str, Any],
+    file_name: str,
+) -> str:
+    """Return a duplicate-export reason if this lead was already exported."""
+    if has_lead_event(file_name, "google_sheets_exported"):
+        return "This saved lead file has already been exported to Google Sheets."
+
+    email = result.get("crm_ready", {}).get("email") or result.get("lead", {}).get("contact", {}).get("email", "")
+    if has_exported_email_to_google_sheets(email):
+        return "A saved result with this email has already been exported to Google Sheets."
+
+    lead_id = result.get("crm_ready", {}).get("lead_id") or result.get("lead", {}).get("lead_id", "")
+    if has_exported_lead_to_google_sheets(lead_id):
+        return "A saved result with this lead ID has already been exported to Google Sheets."
+
+    return ""
 
 
 def build_client_processing_error_detail(request: Request) -> str:

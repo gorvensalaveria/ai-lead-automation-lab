@@ -1,9 +1,12 @@
 from app.automation.storage import build_result
 from app.integrations.google_sheets import (
     GOOGLE_SHEETS_COLUMNS,
+    GoogleSheetsConfigError,
+    append_result_to_google_sheet,
     build_google_sheets_payload,
     build_google_sheets_row,
     build_google_sheets_values,
+    post_google_sheets_append_request,
 )
 
 
@@ -77,3 +80,59 @@ def test_google_sheets_payload_matches_append_shape():
     assert payload["columns"] == GOOGLE_SHEETS_COLUMNS
     assert payload["values"] == [values]
     assert len(values) == len(GOOGLE_SHEETS_COLUMNS)
+
+
+def test_google_sheets_live_append_requires_configuration(monkeypatch):
+    monkeypatch.setattr(
+        "app.integrations.google_sheets.GOOGLE_SHEETS_ENABLED",
+        False,
+    )
+
+    try:
+        append_result_to_google_sheet(sample_result())
+    except GoogleSheetsConfigError as error:
+        assert "GOOGLE_SHEETS_ENABLED=true" in str(error)
+    else:
+        raise AssertionError("Expected GoogleSheetsConfigError")
+
+
+def test_google_sheets_append_request_uses_requests_client(monkeypatch):
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "spreadsheetId": "sheet_123",
+                "updates": {
+                    "updatedRange": "Leads!A2:T2",
+                    "updatedRows": 1,
+                },
+            }
+
+    captured_request = {}
+
+    def fake_post(url, json, headers, timeout):
+        captured_request["url"] = url
+        captured_request["json"] = json
+        captured_request["headers"] = headers
+        captured_request["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr("app.integrations.google_sheets.requests.post", fake_post)
+    monkeypatch.setattr(
+        "app.integrations.google_sheets.GOOGLE_SHEETS_SPREADSHEET_ID",
+        "sheet_123",
+    )
+
+    result = post_google_sheets_append_request(
+        access_token="token_123",
+        payload={"values": [["Ana Santos"]]},
+    )
+
+    assert result["spreadsheetId"] == "sheet_123"
+    assert "values/Leads%21A%3AT:append" in captured_request["url"]
+    assert "valueInputOption=RAW" in captured_request["url"]
+    assert captured_request["json"] == {"values": [["Ana Santos"]]}
+    assert captured_request["headers"] == {"Authorization": "Bearer token_123"}
+    assert captured_request["timeout"] == 20

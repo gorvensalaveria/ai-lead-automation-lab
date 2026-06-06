@@ -1,11 +1,18 @@
 from fastapi.testclient import TestClient
+import pytest
 
 import app.api as api_module
+from app.automation.storage import build_result
 from app.api import app
 from app.rate_limiter import FixedWindowRateLimiter, RateLimitResult
 
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def disable_google_sheets_auto_append(monkeypatch):
+    monkeypatch.setattr(api_module, "GOOGLE_SHEETS_AUTO_APPEND", False)
 
 
 def valid_lead_payload() -> dict:
@@ -29,6 +36,26 @@ def valid_lead_payload() -> dict:
             "preferred_contact_method": "email",
         },
     }
+
+
+def sample_processed_result() -> dict:
+    return build_result(
+        lead=valid_lead_payload(),
+        summary="Ana wants lead automation.",
+        classification="hot",
+        score={
+            "total_score": 100,
+            "max_score": 100,
+            "rating": "high",
+            "breakdown": {
+                "fit": 25,
+                "urgency": 25,
+                "budget": 25,
+                "intent": 25,
+            },
+        },
+        follow_up_message="Hi Ana, thanks for reaching out.",
+    )
 
 
 def test_health_check_returns_ok():
@@ -78,6 +105,7 @@ def test_lead_intake_page_returns_html_without_openai_call():
     assert "Process Lead" in response.text
     assert "Run the AI qualification workflow" in response.text
     assert "data-sample=\"warm\"" in response.text
+    assert '<input name="email" type="email" required autocomplete="email">' in response.text
     assert 'href="/static/lead-intake.css"' in response.text
     assert 'src="/static/lead-intake.js"' in response.text
     assert "Built with Python, FastAPI, OpenAI API" in response.text
@@ -180,6 +208,112 @@ def test_google_sheets_preview_returns_handoff_shape():
 
 def test_google_sheets_lead_preview_rejects_non_json_file_name():
     response = client.get("/api/integrations/google-sheets/preview/missing-output.txt")
+
+    assert response.status_code == 400
+    assert "JSON file name only" in response.json()["detail"]
+
+
+def test_google_sheets_append_saved_lead_uses_live_integration(monkeypatch):
+    def fake_load_saved_output(file_name):
+        return sample_processed_result()
+
+    def fake_append_result_to_google_sheet(result):
+        return {
+            "status": "appended",
+            "spreadsheet_id": "sheet_123",
+            "updated_range": "Leads!A2:T2",
+            "updated_rows": 1,
+        }
+
+    def fake_record_lead_event(**kwargs):
+        return {"event_type": kwargs["event_type"]}
+
+    monkeypatch.setattr(api_module, "has_lead_event", lambda file_name, event_type: False)
+    monkeypatch.setattr(api_module, "has_exported_email_to_google_sheets", lambda email: False)
+    monkeypatch.setattr(api_module, "has_exported_lead_to_google_sheets", lambda lead_id: False)
+    monkeypatch.setattr(api_module, "load_saved_output", fake_load_saved_output)
+    monkeypatch.setattr(
+        api_module,
+        "append_result_to_google_sheet",
+        fake_append_result_to_google_sheet,
+    )
+    monkeypatch.setattr(api_module, "record_lead_event", fake_record_lead_event)
+
+    response = client.post("/api/integrations/google-sheets/append/lead_test.json")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["integration"] == "google_sheets"
+    assert data["file_name"] == "lead_test.json"
+    assert data["result"]["status"] == "appended"
+    assert data["result"]["updated_range"] == "Leads!A2:T2"
+
+
+def test_google_sheets_append_saved_lead_skips_duplicate_export(monkeypatch):
+    def fake_append_result_to_google_sheet(result):
+        raise AssertionError("Duplicate exports should not call Google Sheets.")
+
+    monkeypatch.setattr(api_module, "load_saved_output", lambda file_name: sample_processed_result())
+    monkeypatch.setattr(api_module, "has_lead_event", lambda file_name, event_type: True)
+    monkeypatch.setattr(api_module, "has_exported_email_to_google_sheets", lambda email: False)
+    monkeypatch.setattr(api_module, "has_exported_lead_to_google_sheets", lambda lead_id: False)
+    monkeypatch.setattr(
+        api_module,
+        "append_result_to_google_sheet",
+        fake_append_result_to_google_sheet,
+    )
+
+    response = client.post("/api/integrations/google-sheets/append/lead_test.json")
+
+    assert response.status_code == 200
+    assert response.json()["result"]["status"] == "skipped"
+    assert response.json()["result"]["reason"] == "already_exported"
+
+
+def test_google_sheets_append_saved_lead_skips_duplicate_email(monkeypatch):
+    def fake_append_result_to_google_sheet(result):
+        raise AssertionError("Duplicate emails should not call Google Sheets.")
+
+    monkeypatch.setattr(api_module, "load_saved_output", lambda file_name: sample_processed_result())
+    monkeypatch.setattr(api_module, "has_lead_event", lambda file_name, event_type: False)
+    monkeypatch.setattr(api_module, "has_exported_email_to_google_sheets", lambda email: True)
+    monkeypatch.setattr(api_module, "has_exported_lead_to_google_sheets", lambda lead_id: False)
+    monkeypatch.setattr(
+        api_module,
+        "append_result_to_google_sheet",
+        fake_append_result_to_google_sheet,
+    )
+
+    response = client.post("/api/integrations/google-sheets/append/new_file_same_email.json")
+
+    assert response.status_code == 200
+    assert response.json()["result"]["status"] == "skipped"
+    assert "email" in response.json()["result"]["detail"]
+
+
+def test_google_sheets_append_saved_lead_skips_duplicate_lead_id(monkeypatch):
+    def fake_append_result_to_google_sheet(result):
+        raise AssertionError("Duplicate lead IDs should not call Google Sheets.")
+
+    monkeypatch.setattr(api_module, "load_saved_output", lambda file_name: sample_processed_result())
+    monkeypatch.setattr(api_module, "has_lead_event", lambda file_name, event_type: False)
+    monkeypatch.setattr(api_module, "has_exported_email_to_google_sheets", lambda email: False)
+    monkeypatch.setattr(api_module, "has_exported_lead_to_google_sheets", lambda lead_id: True)
+    monkeypatch.setattr(
+        api_module,
+        "append_result_to_google_sheet",
+        fake_append_result_to_google_sheet,
+    )
+
+    response = client.post("/api/integrations/google-sheets/append/lead_valid_later.json")
+
+    assert response.status_code == 200
+    assert response.json()["result"]["status"] == "skipped"
+    assert "lead ID" in response.json()["result"]["detail"]
+
+
+def test_google_sheets_append_saved_lead_rejects_non_json_file_name():
+    response = client.post("/api/integrations/google-sheets/append/missing-output.txt")
 
     assert response.status_code == 400
     assert "JSON file name only" in response.json()["detail"]
@@ -288,3 +422,79 @@ def test_lead_webhook_blocks_fourth_request_in_sixty_second_window(monkeypatch):
     assert [response.status_code for response in responses] == [200, 200, 200, 429]
     assert responses[2].headers["X-RateLimit-Remaining"] == "0"
     assert responses[3].headers["Retry-After"] == "60"
+
+
+def test_lead_webhook_auto_appends_to_google_sheets_when_enabled(monkeypatch):
+    def process_without_openai(lead):
+        return sample_processed_result(), "data/outputs/lead_valid.json"
+
+    def fake_append_result_to_google_sheet(result):
+        return {
+            "status": "appended",
+            "spreadsheet_id": "sheet_123",
+            "updated_range": "Leads!A2:T2",
+        }
+
+    def fake_record_lead_event(**kwargs):
+        return {"event_type": kwargs["event_type"]}
+
+    monkeypatch.setattr(api_module, "process_lead", process_without_openai)
+    monkeypatch.setattr(api_module, "GOOGLE_SHEETS_AUTO_APPEND", True)
+    monkeypatch.setattr(api_module, "has_lead_event", lambda file_name, event_type: False)
+    monkeypatch.setattr(api_module, "has_exported_email_to_google_sheets", lambda email: False)
+    monkeypatch.setattr(api_module, "has_exported_lead_to_google_sheets", lambda lead_id: False)
+    monkeypatch.setattr(
+        api_module,
+        "append_result_to_google_sheet",
+        fake_append_result_to_google_sheet,
+    )
+    monkeypatch.setattr(api_module, "record_lead_event", fake_record_lead_event)
+    monkeypatch.setattr(
+        api_module,
+        "lead_process_rate_limiter",
+        FixedWindowRateLimiter(limit=3, window_seconds=60, clock=lambda: 200.0),
+    )
+
+    response = client.post(
+        "/webhooks/leads",
+        json=valid_lead_payload(),
+        headers={"X-Forwarded-For": "qa-google-sheets-client"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["google_sheets"]["status"] == "appended"
+    assert response.json()["google_sheets"]["updated_range"] == "Leads!A2:T2"
+
+
+def test_lead_webhook_auto_append_skips_duplicate_export(monkeypatch):
+    def process_without_openai(lead):
+        return sample_processed_result(), "data/outputs/lead_valid.json"
+
+    def fake_append_result_to_google_sheet(result):
+        raise AssertionError("Duplicate exports should not call Google Sheets.")
+
+    monkeypatch.setattr(api_module, "process_lead", process_without_openai)
+    monkeypatch.setattr(api_module, "GOOGLE_SHEETS_AUTO_APPEND", True)
+    monkeypatch.setattr(api_module, "has_lead_event", lambda file_name, event_type: True)
+    monkeypatch.setattr(api_module, "has_exported_email_to_google_sheets", lambda email: False)
+    monkeypatch.setattr(api_module, "has_exported_lead_to_google_sheets", lambda lead_id: False)
+    monkeypatch.setattr(
+        api_module,
+        "append_result_to_google_sheet",
+        fake_append_result_to_google_sheet,
+    )
+    monkeypatch.setattr(
+        api_module,
+        "lead_process_rate_limiter",
+        FixedWindowRateLimiter(limit=3, window_seconds=60, clock=lambda: 250.0),
+    )
+
+    response = client.post(
+        "/webhooks/leads",
+        json=valid_lead_payload(),
+        headers={"X-Forwarded-For": "qa-google-sheets-duplicate-client"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["google_sheets"]["status"] == "skipped"
+    assert response.json()["google_sheets"]["reason"] == "already_exported"

@@ -169,14 +169,31 @@ The inbound rate limiter is in-memory and appropriate for one running applicatio
 
 ## Integration Notes
 
-The Google Sheets adapter is currently a tested preview layer. It exposes spreadsheet-ready rows and append payloads without requiring Google credentials:
+The Google Sheets adapter includes preview endpoints and a live append endpoint. Preview endpoints work without Google credentials:
 
 ```text
 GET /api/integrations/google-sheets/preview
 GET /api/integrations/google-sheets/preview/{saved_output_file_name}.json
 ```
 
-To turn it into a live Google Sheets writer, add Google Sheets API credentials as deployment secrets, share the target Sheet with the service account, and protect the write endpoint before exposing real lead data.
+To enable live Google Sheets writing, add Google Sheets API credentials as deployment secrets, share the target Sheet with the service account, and use:
+
+```text
+POST /api/integrations/google-sheets/append/{saved_output_file_name}.json
+```
+
+Required environment variables:
+
+```text
+GOOGLE_SHEETS_ENABLED=true
+GOOGLE_SHEETS_SPREADSHEET_ID=your_google_sheet_id_here
+GOOGLE_SHEETS_RANGE=Leads!A:T
+GOOGLE_SERVICE_ACCOUNT_FILE=/absolute/path/to/service-account.json
+```
+
+Use `GOOGLE_SERVICE_ACCOUNT_JSON` instead of `GOOGLE_SERVICE_ACCOUNT_FILE` for hosted deployments that store service account credentials as one secret.
+
+Set `GOOGLE_SHEETS_AUTO_APPEND=true` only when every processed webhook lead should be appended automatically after local saving.
 
 ## Privacy Notes
 

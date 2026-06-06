@@ -7,6 +7,9 @@ from app.automation.storage import (
     build_result,
     bulk_update_review_status,
     get_database_path,
+    has_exported_email_to_google_sheets,
+    has_exported_lead_to_google_sheets,
+    has_lead_event,
     list_lead_events,
     list_saved_outputs,
     load_saved_output,
@@ -258,6 +261,32 @@ def test_record_lead_event_returns_activity_timeline_rows(tmp_path):
 
     assert event["event_type"] == "follow_up_copied"
     assert events[0]["event_label"] == "Follow-up draft copied"
+
+
+def test_record_lead_event_accepts_google_sheets_export_event(tmp_path):
+    result = build_result(
+        lead=sample_lead(),
+        summary="Ana wants lead automation.",
+        classification="hot",
+        score=sample_score(),
+        follow_up_message="Hi Ana, thanks for reaching out.",
+    )
+    file_path = save_output(result, output_dir=tmp_path)
+
+    event = record_lead_event(
+        file_name=file_path.name,
+        event_type="google_sheets_exported",
+        event_label="Google Sheets row appended",
+        event_detail="Saved result sent to Google Sheets.",
+        output_dir=tmp_path,
+    )
+    events = list_lead_events(file_path.name, output_dir=tmp_path)
+
+    assert event["event_type"] == "google_sheets_exported"
+    assert events[0]["event_label"] == "Google Sheets row appended"
+    assert has_lead_event(file_path.name, "google_sheets_exported", output_dir=tmp_path)
+    assert has_exported_email_to_google_sheets("ANA@EXAMPLE.COM", output_dir=tmp_path)
+    assert has_exported_lead_to_google_sheets("lead_test", output_dir=tmp_path)
     assert any(row["event_type"] == "lead_processed" for row in events)
 
 

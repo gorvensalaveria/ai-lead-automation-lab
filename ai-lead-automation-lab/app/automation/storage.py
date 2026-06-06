@@ -47,6 +47,7 @@ VALID_EVENT_TYPES = {
     "lead_processed",
     "lead_viewed",
     "csv_exported",
+    "google_sheets_exported",
     "review_status_changed",
     "follow_up_copied",
     "lead_archived",
@@ -535,6 +536,89 @@ def list_lead_events(
         ).fetchall()
 
     return [dict(row) for row in rows]
+
+
+def has_lead_event(
+    file_name: str,
+    event_type: str,
+    output_dir: str | Path = "data/outputs",
+) -> bool:
+    """Return whether a saved lead already has a matching audit event."""
+    output_path = Path(output_dir)
+    get_safe_output_file_path(file_name=file_name, output_path=output_path)
+    normalized_event_type = normalize_event_type(event_type)
+    sync_json_outputs_to_database(output_dir=output_path)
+
+    with sqlite3.connect(get_database_path(output_path)) as connection:
+        row = connection.execute(
+            """
+            SELECT id
+            FROM lead_events
+            WHERE file_name = ? AND event_type = ?
+            LIMIT 1
+            """,
+            (file_name, normalized_event_type),
+        ).fetchone()
+
+    return row is not None
+
+
+def has_exported_lead_to_google_sheets(
+    lead_id: str,
+    output_dir: str | Path = "data/outputs",
+) -> bool:
+    """Return whether any saved output for this lead was exported to Google Sheets."""
+    normalized_lead_id = str(lead_id or "").strip()
+    if not normalized_lead_id:
+        return False
+
+    output_path = Path(output_dir)
+    sync_json_outputs_to_database(output_dir=output_path)
+
+    with sqlite3.connect(get_database_path(output_path)) as connection:
+        row = connection.execute(
+            """
+            SELECT lead_events.id
+            FROM lead_events
+            INNER JOIN saved_leads
+                ON saved_leads.file_name = lead_events.file_name
+            WHERE saved_leads.lead_id = ?
+                AND lead_events.event_type = ?
+            LIMIT 1
+            """,
+            (normalized_lead_id, "google_sheets_exported"),
+        ).fetchone()
+
+    return row is not None
+
+
+def has_exported_email_to_google_sheets(
+    email: str,
+    output_dir: str | Path = "data/outputs",
+) -> bool:
+    """Return whether any saved output for this email was exported to Google Sheets."""
+    normalized_email = str(email or "").strip().lower()
+    if not normalized_email:
+        return False
+
+    output_path = Path(output_dir)
+    sync_json_outputs_to_database(output_dir=output_path)
+
+    with sqlite3.connect(get_database_path(output_path)) as connection:
+        row = connection.execute(
+            """
+            SELECT lead_events.id
+            FROM lead_events
+            INNER JOIN saved_leads
+                ON saved_leads.file_name = lead_events.file_name
+            WHERE lower(saved_leads.email) = ?
+                AND lead_events.event_type = ?
+            LIMIT 1
+            """,
+            (normalized_email, "google_sheets_exported"),
+        ).fetchone()
+
+    return row is not None
 
 
 def normalize_event_type(event_type: str) -> str:

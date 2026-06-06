@@ -8,7 +8,7 @@ AI automation portfolio project that processes inbound leads, summarizes busines
 
 **Repository name:** `ai-lead-automation-lab`
 
-**Short description:** AI automation system that processes leads, summarizes intent, scores quality, drafts follow-up messages, stores CRM-ready outputs, and provides a review dashboard with SQLite-backed status tracking, AI metadata, audit events, CSV export, Google Sheets handoff previews, operations readiness checks, privacy-aware review controls, OpenAI retry/backoff handling, and structured request observability.
+**Short description:** AI automation system that processes leads, summarizes intent, scores quality, drafts follow-up messages, stores CRM-ready outputs, and provides a review dashboard with SQLite-backed status tracking, AI metadata, audit events, CSV export, live Google Sheets append support, operations readiness checks, privacy-aware review controls, OpenAI retry/backoff handling, and structured request observability.
 
 **Target role:** AI Automation Specialist / AI Automation Developer
 
@@ -39,7 +39,7 @@ The workflow can:
 13. Record audit events for lead processing, detail views, status changes, follow-up draft copies, and CSV exports.
 14. Store AI processing metadata such as model, workflow version, prompt versions, and generation timestamps.
 15. Export saved lead history as CSV.
-16. Preview Google Sheets-ready rows and append payloads for CRM or spreadsheet handoff.
+16. Preview Google Sheets-ready rows and append saved leads to a live Google Sheet when configured.
 17. Open a detail review page for each saved lead, including AI summary, score breakdown, follow-up draft, review workflow actions, AI metadata with readable fallbacks, grouped activity timeline, and saved JSON.
 18. Show a system status page and detailed health endpoint for storage, SQLite, model, workflow version, and latest activity checks.
 19. Mask email and phone data on lead detail pages for privacy-safe portfolio review.
@@ -48,7 +48,7 @@ The workflow can:
 22. Rate-limit inbound lead processing requests to protect API credits on public deployments.
 23. Add request IDs to API responses and structured JSON request logs for traceability.
 24. Return client-safe AI processing errors while keeping raw provider failures in server logs.
-25. Expose the workflow through a terminal command, webhook API, browser interface, history dashboard, detail review page, JSON history API, review status API, bulk review API, archive API, audit event API, CSV export endpoint, Google Sheets preview endpoints, and operations readiness endpoints.
+25. Expose the workflow through a terminal command, webhook API, browser interface, history dashboard, detail review page, JSON history API, review status API, bulk review API, archive API, audit event API, CSV export endpoint, Google Sheets preview and append endpoints, and operations readiness endpoints.
 
 ## Architecture Overview
 
@@ -78,7 +78,7 @@ Local storage and review surfaces
   ├─ AI processing metadata
   ├─ Audit event timeline
   ├─ CSV export
-  ├─ Google Sheets handoff preview
+  ├─ Google Sheets preview and live append
   ├─ Operations readiness checks
   └─ Privacy-safe review controls
 ```
@@ -107,9 +107,9 @@ This project models how a business could reduce manual lead review work while ke
 
 Current milestone: **Portfolio-ready product experience**
 
-The core portfolio version is complete. It includes the local terminal workflow, FastAPI webhook endpoint, browser interface page, saved lead history dashboard, detail review page, SQLite-backed status tracking, bulk review actions, AI metadata, audit event timeline, CSV export, Google Sheets handoff previews, system status checks, masked contact-data review mode, archive workflow, OpenAI retry/backoff handling, inbound lead-processing rate limiting, request IDs, structured JSON request logs, local JSON output storage, pytest tests, and documentation for future n8n, Make.com, and Zapier connections.
+The core portfolio version is complete. It includes the local terminal workflow, FastAPI webhook endpoint, browser interface page, saved lead history dashboard, detail review page, SQLite-backed status tracking, bulk review actions, AI metadata, audit event timeline, CSV export, Google Sheets handoff previews and live append support, system status checks, masked contact-data review mode, archive workflow, OpenAI retry/backoff handling, inbound lead-processing rate limiting, request IDs, structured JSON request logs, local JSON output storage, pytest tests, and documentation for future n8n, Make.com, and Zapier connections.
 
-Live external integrations are documented but not implemented.
+Google Sheets is implemented as the first live external integration. Other external integrations such as n8n, Make.com, Zapier, HubSpot, Airtable, Slack, and Gmail are documented or planned as future production upgrades.
 
 Deployment notes are available in [DEPLOYMENT.md](DEPLOYMENT.md).
 
@@ -121,7 +121,7 @@ Deployment notes are available in [DEPLOYMENT.md](DEPLOYMENT.md).
 4. The history dashboard gives a human reviewer analytics, search, filters, sorting, CSV export, and quick access to each lead.
 5. Reviewers can select several leads and bulk-mark them as reviewed, contacted, needing follow-up, or archived.
 6. The detail page shows the complete handoff: score, classification, next action, AI summary, follow-up draft, CRM-ready fields, saved JSON, review status actions, and activity timeline.
-7. Integration preview endpoints expose flat spreadsheet rows and Google Sheets append payloads for a future CRM or operations workflow.
+7. Integration endpoints expose flat spreadsheet rows, Google Sheets append payload previews, and a live Google Sheets append action when credentials are configured.
 8. The system status page shows whether storage, SQLite, model configuration, workflow version, and latest activity are ready.
 9. Privacy controls let reviewers mask contact data or archive a lead while keeping audit history available.
 10. OpenAI summary, classification, and follow-up generation use controlled retries for rate limits and temporary API failures.
@@ -158,7 +158,7 @@ Deployment notes are available in [DEPLOYMENT.md](DEPLOYMENT.md).
 - OpenAI retry/backoff handling
 - Inbound lead-processing rate limiting
 - CSV export
-- Google Sheets handoff payloads
+- Google Sheets handoff payloads and live append support
 - Operations status page and health checks
 - Privacy masking helpers
 - Docker
@@ -196,7 +196,7 @@ Deployment notes are available in [DEPLOYMENT.md](DEPLOYMENT.md).
 - Search, filtering, sorting, and analytics UI
 - CRM-ready handoff fields
 - CSV reporting/export
-- Google Sheets integration handoff design
+- Google Sheets integration handoff design and live append implementation
 - Operations readiness checks
 - Deployment health endpoint design
 - Privacy-safe UI rendering
@@ -584,6 +584,12 @@ Preview one saved lead as a Google Sheets append payload:
 http://127.0.0.1:8000/api/integrations/google-sheets/preview/{saved_output_file_name}.json
 ```
 
+Append one saved lead to the configured live Google Sheet:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/integrations/google-sheets/append/{saved_output_file_name}.json
+```
+
 Open the interactive API docs:
 
 ```text
@@ -737,11 +743,12 @@ These docs explain how each platform could send lead JSON to:
 POST /webhooks/leads
 ```
 
-The Google Sheets notes also document the tested handoff payload returned by:
+The Google Sheets notes also document the tested handoff payload and live append endpoint:
 
 ```text
 GET /api/integrations/google-sheets/preview
 GET /api/integrations/google-sheets/preview/{saved_output_file_name}.json
+POST /api/integrations/google-sheets/append/{saved_output_file_name}.json
 ```
 
 ## Limitations and Next Steps
@@ -752,7 +759,7 @@ Production improvements would include:
 
 - Add authentication and role-based access before exposing saved lead data.
 - Move from local SQLite to managed PostgreSQL for hosted multi-user use.
-- Add a live CRM write integration such as HubSpot, Pipedrive, Airtable, or authenticated Google Sheets append.
+- Add another live CRM write integration such as HubSpot, Pipedrive, Airtable, Slack, or Gmail.
 - Add background job processing for slow or high-volume AI requests.
 - Move inbound rate limiting from in-memory storage to Redis or a managed shared store for multi-instance production.
 - Add privacy controls for deleting lead records and masking sensitive fields in logs or screenshots.

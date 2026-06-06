@@ -1,14 +1,22 @@
 # Google Sheets Integration Notes
 
-This integration package documents the Google Sheets handoff shape for the AI Lead Intake Automation System.
+This integration package documents and supports the Google Sheets handoff for the AI Lead Intake Automation System.
 
-The current product includes a tested payload adapter and preview API endpoints. It does not write directly to a live Google Sheet yet, which keeps the portfolio review experience open while showing the exact data contract needed for a production integration.
+The current product includes:
+
+- a tested payload adapter
+- preview API endpoints
+- a live Google Sheets append endpoint
+- optional auto-append after webhook lead processing
+
+The live integration is disabled by default so the portfolio demo can run without Google credentials.
 
 ## Use Case
 
 Many small teams want qualified leads in a spreadsheet before they are ready for a full CRM. This adapter turns saved AI lead results into flat rows that can be appended to Google Sheets by:
 
 - a future backend Google Sheets API client
+- the built-in backend Google Sheets API client
 - n8n
 - Make.com
 - Zapier
@@ -26,6 +34,12 @@ Preview one saved lead as a Google Sheets append payload:
 
 ```text
 GET /api/integrations/google-sheets/preview/{saved_output_file_name}.json
+```
+
+Append one saved lead result to a configured live Google Sheet:
+
+```text
+POST /api/integrations/google-sheets/append/{saved_output_file_name}.json
 ```
 
 The single-lead endpoint returns a payload shaped for the Google Sheets `spreadsheets.values.append` API:
@@ -92,15 +106,31 @@ The example `values` row above is shortened for readability. The real payload in
 | `workflow_version` | AI metadata |
 | `model` | AI metadata |
 
-## Production Upgrade Path
+## Live Integration Setup
 
-To make this a live Google Sheets integration:
+To enable the live Google Sheets integration:
 
 1. Create a Google Cloud project.
 2. Enable the Google Sheets API.
 3. Create a service account and share the target Sheet with that service account email.
-4. Store credentials as a deployment secret.
-5. Add a protected backend endpoint or background job that calls `spreadsheets.values.append`.
-6. Record an audit event such as `google_sheets_exported` after a successful append.
+4. Store credentials locally or as a deployment secret.
+5. Configure these environment variables:
+
+```text
+GOOGLE_SHEETS_ENABLED=true
+GOOGLE_SHEETS_SPREADSHEET_ID=your_google_sheet_id_here
+GOOGLE_SHEETS_RANGE=Leads!A:T
+GOOGLE_SERVICE_ACCOUNT_FILE=/absolute/path/to/service-account.json
+```
+
+For hosted deployments, you can use `GOOGLE_SERVICE_ACCOUNT_JSON` instead of `GOOGLE_SERVICE_ACCOUNT_FILE`.
+
+To automatically append every newly processed webhook lead to Google Sheets, also set:
+
+```text
+GOOGLE_SHEETS_AUTO_APPEND=true
+```
+
+After a successful append, the app records a `google_sheets_exported` audit event for the saved lead.
 
 For a client-facing production version, the write action should be protected by authentication or an API gateway because lead records can contain personal contact information.
