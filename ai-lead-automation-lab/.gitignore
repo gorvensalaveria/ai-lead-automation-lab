@@ -12,13 +12,26 @@ env/
 
 # Environment variables and secrets
 .env
+.env.*
+!.env.example
 
 # Local generated data
 data/outputs/*.json
 data/outputs/*.db
+data/outputs/*.sqlite
+data/outputs/*.sqlite3
+*.db
+*.sqlite
+*.sqlite3
 logs/*.log
 
 # OS/editor files
 .DS_Store
+__MACOSX/
 .idea/
 .vscode/
+
+# Coverage and frontend dependencies
+.coverage
+htmlcov/
+node_modules/

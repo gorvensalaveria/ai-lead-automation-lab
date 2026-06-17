@@ -53,6 +53,28 @@ VALID_EVENT_TYPES = {
     "lead_archived",
 }
 
+VALID_INTEGRATION_RUN_STATUSES = {
+    "disabled",
+    "success",
+    "failed",
+    "skipped",
+    "retrying",
+}
+
+INTEGRATION_RUN_PUBLIC_FIELDS = [
+    "id",
+    "file_name",
+    "lead_id",
+    "provider",
+    "status",
+    "external_id",
+    "message",
+    "retry_count",
+    "last_retry_at",
+    "created_at",
+    "updated_at",
+]
+
 
 def save_output(result: dict[str, Any], output_dir: str | Path = "data/outputs") -> Path:
     """Save one automation result as JSON and index it in SQLite."""
@@ -191,8 +213,376 @@ def initialize_database(output_dir: str | Path = "data/outputs") -> Path:
         connection.execute(
             "CREATE INDEX IF NOT EXISTS idx_lead_events_created_at ON lead_events(created_at)"
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS idempotency_keys (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                idempotency_key TEXT UNIQUE NOT NULL,
+                lead_id TEXT,
+                file_name TEXT,
+                response_json TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS integration_runs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_name TEXT NOT NULL,
+                lead_id TEXT,
+                provider TEXT NOT NULL,
+                status TEXT NOT NULL,
+                external_id TEXT,
+                message TEXT,
+                response_json TEXT,
+                retry_count INTEGER DEFAULT 0,
+                last_retry_at TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_integration_runs_file_name ON integration_runs(file_name)"
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_integration_runs_lead_id ON integration_runs(lead_id)"
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_integration_runs_provider ON integration_runs(provider)"
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_integration_runs_status ON integration_runs(status)"
+        )
 
     return database_path
+
+
+def create_integration_run(
+    *,
+    file_name: str,
+    lead_id: str | None,
+    provider: str,
+    status: str,
+    external_id: str | None = None,
+    message: str | None = None,
+    response_json: dict[str, Any] | None = None,
+    output_dir: str | Path | None = None,
+) -> int:
+    """Create one downstream integration run record."""
+    output_path = Path(output_dir or "data/outputs")
+    safe_file_name = get_safe_output_file_path(
+        file_name=file_name,
+        output_path=output_path,
+    ).name
+    normalized_status = normalize_integration_run_status(status)
+    normalized_provider = normalize_integration_provider(provider)
+    now = datetime.now(timezone.utc).isoformat()
+    initialize_database(output_path)
+
+    with sqlite3.connect(get_database_path(output_path)) as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO integration_runs (
+                file_name,
+                lead_id,
+                provider,
+                status,
+                external_id,
+                message,
+                response_json,
+                retry_count,
+                last_retry_at,
+                created_at,
+                updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)
+            """,
+            (
+                safe_file_name,
+                lead_id,
+                normalized_provider,
+                normalized_status,
+                external_id,
+                message,
+                json.dumps(response_json) if response_json is not None else None,
+                now,
+                now,
+            ),
+        )
+
+    return int(cursor.lastrowid)
+
+
+def list_integration_runs(
+    *,
+    file_name: str | None = None,
+    lead_id: str | None = None,
+    provider: str | None = None,
+    status: str | None = None,
+    output_dir: str | Path | None = None,
+) -> list[dict[str, Any]]:
+    """Return safe integration run rows, optionally filtered."""
+    output_path = Path(output_dir or "data/outputs")
+    initialize_database(output_path)
+
+    clauses = []
+    values: list[Any] = []
+
+    if file_name:
+        clauses.append("file_name = ?")
+        values.append(get_safe_output_file_path(file_name=file_name, output_path=output_path).name)
+    if lead_id:
+        clauses.append("lead_id = ?")
+        values.append(str(lead_id))
+    if provider:
+        clauses.append("provider = ?")
+        values.append(normalize_integration_provider(provider))
+    if status:
+        clauses.append("status = ?")
+        values.append(normalize_integration_run_status(status))
+
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    select_fields = ", ".join(INTEGRATION_RUN_PUBLIC_FIELDS)
+
+    with sqlite3.connect(get_database_path(output_path)) as connection:
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(
+            f"""
+            SELECT {select_fields}
+            FROM integration_runs
+            {where_sql}
+            ORDER BY created_at DESC, id DESC
+            """,
+            values,
+        ).fetchall()
+
+    return [dict(row) for row in rows]
+
+
+def get_integration_run(
+    run_id: int,
+    *,
+    output_dir: str | Path | None = None,
+) -> dict[str, Any] | None:
+    """Return one integration run, including internal retry metadata."""
+    output_path = Path(output_dir or "data/outputs")
+    initialize_database(output_path)
+
+    with sqlite3.connect(get_database_path(output_path)) as connection:
+        connection.row_factory = sqlite3.Row
+        row = connection.execute(
+            """
+            SELECT
+                id,
+                file_name,
+                lead_id,
+                provider,
+                status,
+                external_id,
+                message,
+                response_json,
+                retry_count,
+                last_retry_at,
+                created_at,
+                updated_at
+            FROM integration_runs
+            WHERE id = ?
+            LIMIT 1
+            """,
+            (run_id,),
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    result = dict(row)
+    if result.get("response_json"):
+        result["response_json"] = json.loads(result["response_json"])
+    else:
+        result["response_json"] = None
+    return result
+
+
+def update_integration_run_after_retry(
+    *,
+    run_id: int,
+    status: str,
+    external_id: str | None = None,
+    message: str | None = None,
+    response_json: dict[str, Any] | None = None,
+    output_dir: str | Path | None = None,
+) -> None:
+    """Update one existing integration run after a manual retry attempt."""
+    output_path = Path(output_dir or "data/outputs")
+    normalized_status = normalize_integration_run_status(status)
+    now = datetime.now(timezone.utc).isoformat()
+    initialize_database(output_path)
+
+    with sqlite3.connect(get_database_path(output_path)) as connection:
+        cursor = connection.execute(
+            """
+            UPDATE integration_runs
+            SET
+                status = ?,
+                external_id = ?,
+                message = ?,
+                response_json = ?,
+                retry_count = retry_count + 1,
+                last_retry_at = ?,
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                normalized_status,
+                external_id,
+                message,
+                json.dumps(response_json) if response_json is not None else None,
+                now,
+                now,
+                run_id,
+            ),
+        )
+
+    if cursor.rowcount == 0:
+        raise FileNotFoundError(f"Integration run not found: {run_id}")
+
+
+def get_integration_status_summary(
+    *,
+    output_dir: str | Path | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Return aggregate status counts by integration provider."""
+    output_path = Path(output_dir or "data/outputs")
+    initialize_database(output_path)
+    providers = ["google_sheets", "airtable", "hubspot"]
+    summary: dict[str, dict[str, Any]] = {
+        provider: {
+            "last_status": None,
+            "success_count": 0,
+            "failed_count": 0,
+            "skipped_count": 0,
+        }
+        for provider in providers
+    }
+
+    with sqlite3.connect(get_database_path(output_path)) as connection:
+        count_rows = connection.execute(
+            """
+            SELECT provider, status, COUNT(*) AS count
+            FROM integration_runs
+            GROUP BY provider, status
+            """
+        ).fetchall()
+        latest_rows = connection.execute(
+            """
+            SELECT provider, status
+            FROM integration_runs
+            WHERE id IN (
+                SELECT MAX(id)
+                FROM integration_runs
+                GROUP BY provider
+            )
+            """
+        ).fetchall()
+
+    for provider, status, count in count_rows:
+        provider_summary = summary.setdefault(
+            provider,
+            {
+                "last_status": None,
+                "success_count": 0,
+                "failed_count": 0,
+                "skipped_count": 0,
+            },
+        )
+        if status == "success":
+            provider_summary["success_count"] = count
+        elif status == "failed":
+            provider_summary["failed_count"] = count
+        elif status == "skipped":
+            provider_summary["skipped_count"] = count
+
+    for provider, status in latest_rows:
+        summary.setdefault(
+            provider,
+            {
+                "last_status": None,
+                "success_count": 0,
+                "failed_count": 0,
+                "skipped_count": 0,
+            },
+        )["last_status"] = status
+
+    return summary
+
+
+def load_idempotency_response(
+    idempotency_key: str,
+    output_dir: str | Path = "data/outputs",
+) -> dict[str, Any] | None:
+    """Return a saved webhook response for an idempotency key."""
+    normalized_key = str(idempotency_key or "").strip()
+    if not normalized_key:
+        return None
+
+    output_path = Path(output_dir)
+    initialize_database(output_path)
+
+    with sqlite3.connect(get_database_path(output_path)) as connection:
+        row = connection.execute(
+            """
+            SELECT response_json
+            FROM idempotency_keys
+            WHERE idempotency_key = ?
+            LIMIT 1
+            """,
+            (normalized_key,),
+        ).fetchone()
+
+    if not row:
+        return None
+
+    return json.loads(row[0])
+
+
+def save_idempotency_response(
+    idempotency_key: str,
+    response_payload: dict[str, Any],
+    lead_id: str = "",
+    file_name: str = "",
+    output_dir: str | Path = "data/outputs",
+) -> None:
+    """Save a successful webhook response for future duplicate requests."""
+    normalized_key = str(idempotency_key or "").strip()
+    if not normalized_key:
+        return
+
+    output_path = Path(output_dir)
+    initialize_database(output_path)
+    created_at = datetime.now(timezone.utc).isoformat()
+
+    with sqlite3.connect(get_database_path(output_path)) as connection:
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO idempotency_keys (
+                idempotency_key,
+                lead_id,
+                file_name,
+                response_json,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                normalized_key,
+                str(lead_id or ""),
+                str(file_name or ""),
+                json.dumps(response_payload),
+                created_at,
+            ),
+        )
 
 
 def save_result_to_database(
@@ -628,6 +1018,27 @@ def normalize_event_type(event_type: str) -> str:
         raise ValueError("Event type must be one of: " + ", ".join(sorted(VALID_EVENT_TYPES)))
 
     return normalized_event_type
+
+
+def normalize_integration_provider(provider: str) -> str:
+    """Return a normalized integration provider identifier."""
+    normalized_provider = str(provider or "").strip().lower()
+    if not normalized_provider:
+        raise ValueError("Integration provider is required.")
+
+    return normalized_provider
+
+
+def normalize_integration_run_status(status: str) -> str:
+    """Return a supported integration run status."""
+    normalized_status = str(status or "").strip().lower()
+    if normalized_status not in VALID_INTEGRATION_RUN_STATUSES:
+        raise ValueError(
+            "Integration run status must be one of: "
+            + ", ".join(sorted(VALID_INTEGRATION_RUN_STATUSES))
+        )
+
+    return normalized_status
 
 
 def normalize_review_status(review_status: str) -> str:

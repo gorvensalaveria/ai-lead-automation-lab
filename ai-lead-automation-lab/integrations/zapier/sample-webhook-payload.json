@@ -1,0 +1,12 @@
+{
+  "name": "Lina Cruz",
+  "email": "lina@example.com",
+  "phone": "+639191234567",
+  "company": "Cruz Event Studio",
+  "industry": "Events",
+  "budget": "PHP 90,000",
+  "timeline": "This quarter",
+  "source": "Typeform inquiry",
+  "pain_point": "Inquiry follow-ups are inconsistent when event bookings spike.",
+  "message": "We want an AI workflow to qualify event inquiries and alert our coordinator."
+}

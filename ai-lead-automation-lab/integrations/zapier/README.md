@@ -1,66 +1,99 @@
-# Zapier Integration Notes
+# Zapier Lead Intake Workflow
 
-This document explains how Zapier can connect to the AI Lead Intake Automation System through the FastAPI webhook endpoint.
+This folder contains Zapier workflow-readiness assets for sending inbound leads into the AI Lead Intake Automation FastAPI backend.
 
-## Goal
+## What The Zap Does
 
-Use Zapier to send lead data to:
+The recommended Zap captures lead data, sends it to FastAPI for AI processing, and optionally routes hot or qualified leads to a notification step.
 
-```text
-POST /webhooks/leads
-```
+Zapier sends the lead to FastAPI. FastAPI processes the lead with AI and handles downstream Google Sheets, Airtable, and HubSpot dispatch through the app's integration dispatcher.
 
-## Example Zap
+Zapier should not directly write to Airtable, HubSpot, or Google Sheets in this milestone.
 
-1. Choose a trigger app, such as **Facebook Lead Ads**, **Typeform**, **Google Forms**, **HubSpot**, or **Webhooks by Zapier**.
-2. Add an action step using **Webhooks by Zapier**.
-3. Choose **POST**.
-4. Set the URL to the deployed FastAPI endpoint.
-5. Set payload type to JSON.
-6. Map the lead fields into the expected request body.
-7. Use the response in later Zap steps, such as Gmail, Slack, Google Sheets, Airtable, or a CRM.
+## Recommended Zap Trigger
 
-If `GOOGLE_SHEETS_AUTO_APPEND=true`, the backend can also append the processed lead to Google Sheets automatically after saving it locally.
-
-## Local Development URL
-
-When running locally:
-
-```bash
-uvicorn app.api:app --reload
-```
-
-the endpoint is:
+Use:
 
 ```text
-http://127.0.0.1:8000/webhooks/leads
+Webhooks by Zapier - Catch Hook
 ```
 
-Zapier cloud cannot normally reach `127.0.0.1` on your computer. For Zapier testing, the API must be deployed or exposed through a secure tunnel.
+Other trigger apps can also work, such as Facebook Lead Ads, Typeform, Google Forms, or a CRM trigger.
 
-## Example Zapier Field Mapping
+## Recommended Zap Actions
 
-- Lead ID -> `lead_id`
-- Source -> `source`
-- Submitted time -> `submitted_at`
-- Business type -> `business_type`
-- First name -> `contact.first_name`
-- Last name -> `contact.last_name`
-- Email -> `contact.email`
-- Phone -> `contact.phone`
-- Company -> `contact.company`
-- Service interest -> `lead_details.service_interest`
-- Message -> `lead_details.message`
-- Budget range -> `lead_details.budget_range`
-- Timeline -> `lead_details.timeline`
-- Preferred contact method -> `lead_details.preferred_contact_method`
+1. **Webhooks by Zapier - Custom Request** or **POST**
+2. Optional: **Filter by Zapier** for hot or qualified leads
+3. Optional: Slack or Email notification placeholder
 
-## Future Production Notes
+## Send The Lead To FastAPI
 
-Before using this with real leads:
+Use:
 
-- Deploy the API.
-- Add authentication.
-- Use HTTPS.
-- Avoid exposing private lead data in public logs.
-- Review OpenAI API usage and budget limits.
+```text
+POST {{LEAD_API_BASE_URL}}/webhooks/leads
+```
+
+Headers:
+
+```text
+Content-Type: application/json
+X-API-Key: {{LEAD_API_KEY}}
+Idempotency-Key: {{generated_or_mapped_key}}
+```
+
+Map the simple external lead fields into the FastAPI-compatible lead schema in the request body.
+
+## Idempotency
+
+Use an `Idempotency-Key` header for reliable retries.
+
+Good starter options:
+
+- Zapier webhook ID
+- source plus email plus submitted timestamp
+- another unique lead submission ID
+
+Reuse the same idempotency key if retrying the same lead submission.
+
+## Optional HMAC Security
+
+HMAC is optional and disabled by default locally. API key plus idempotency is the recommended starter setup for Zapier.
+
+If HMAC is enabled, the Zap must compute:
+
+```text
+sha256=<hex_digest>
+```
+
+from:
+
+```text
+"{timestamp}.{raw_body}"
+```
+
+Do not claim or assume HMAC works unless the Zap computes the exact expected signature over the exact raw request body sent to FastAPI.
+
+## Test The Zap
+
+1. Start or deploy the FastAPI app.
+2. Configure `LEAD_API_BASE_URL`.
+3. Configure `LEAD_API_KEY`.
+4. Send `sample-webhook-payload.json` to the Catch Hook URL.
+5. Confirm Zapier sends the normalized request to FastAPI.
+6. Check the FastAPI response, saved output, or history dashboard.
+
+## Intentionally Not Included
+
+This milestone does not include:
+
+- Live Zapier API calls from this repository
+- Zapier credentials
+- Direct destination sync actions for Google Sheets, Airtable, or HubSpot
+- Retry queues
+- Background workers
+- OAuth flows
+- Dashboard UI
+- Milestone 7 or later work
+
+For detailed setup steps, see [ZAPIER_SETUP.md](ZAPIER_SETUP.md).

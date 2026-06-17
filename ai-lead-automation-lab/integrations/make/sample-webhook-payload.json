@@ -1,0 +1,12 @@
+{
+  "name": "Jose Reyes",
+  "email": "jose@example.com",
+  "phone": "+639181234567",
+  "company": "Reyes Accounting Services",
+  "industry": "Accounting",
+  "budget": "PHP 60,000",
+  "timeline": "Next 30 days",
+  "source": "Facebook Lead Ad",
+  "pain_point": "Manual follow-ups are slow and leads go cold.",
+  "message": "We want an AI workflow to qualify new inquiries and notify our team."
+}
