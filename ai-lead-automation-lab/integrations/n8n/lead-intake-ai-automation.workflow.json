@@ -1,0 +1,296 @@
+{
+  "name": "AI Lead Intake Automation Starter",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-lead-intake",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "lead-intake-webhook",
+      "name": "Lead Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "lead-intake-starter"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\nconst submittedAt = new Date().toISOString();\nconst normalizedName = String(body.name || '').trim();\nconst [firstName = '', ...lastNameParts] = normalizedName.split(/\\s+/).filter(Boolean);\nconst email = String(body.email || '').trim().toLowerCase();\nconst company = String(body.company || '').trim();\nconst source = String(body.source || 'n8n_webhook').trim();\nconst leadIdSource = [email, company, submittedAt].filter(Boolean).join('|');\nconst idempotencyKey = leadIdSource || `n8n-lead-${Date.now()}`;\nreturn [{\n  json: {\n    idempotency_key: idempotencyKey,\n    lead: {\n      lead_id: `n8n_${Date.now()}`,\n      source,\n      submitted_at: submittedAt,\n      business_type: body.industry || 'general_service',\n      contact: {\n        first_name: firstName || normalizedName,\n        last_name: lastNameParts.join(' '),\n        email,\n        phone: body.phone || '',\n        company\n      },\n      lead_details: {\n        service_interest: body.pain_point || body.message || 'lead qualification automation',\n        message: body.message || body.pain_point || '',\n        budget_range: body.budget || '',\n        timeline: body.timeline || '',\n        preferred_contact_method: body.preferred_contact_method || 'email'\n      }\n    }\n  }\n}];"
+      },
+      "id": "normalize-lead-payload",
+      "name": "Normalize Lead Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "idempotency-key",
+              "name": "idempotency_key",
+              "type": "string",
+              "value": "={{$json.idempotency_key}}"
+            },
+            {
+              "id": "lead-payload",
+              "name": "lead",
+              "type": "object",
+              "value": "={{$json.lead}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "generate-idempotency-key",
+      "name": "Generate Idempotency Key",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.LEAD_API_BASE_URL}}/webhooks/leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-API-Key",
+              "value": "={{$env.LEAD_API_KEY}}"
+            },
+            {
+              "name": "Idempotency-Key",
+              "value": "={{$json.idempotency_key}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json.lead}}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "send-lead-to-fastapi",
+      "name": "Send Lead to FastAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        780,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "hot-classification",
+              "leftValue": "={{$json.result.ai_outputs.classification}}",
+              "rightValue": "hot",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "qualified-score",
+              "leftValue": "={{$json.result.ai_outputs.score.total_score}}",
+              "rightValue": 75,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "check-lead-qualification",
+      "name": "Check Lead Qualification",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "sales-note",
+              "name": "sales_notification",
+              "type": "string",
+              "value": "={{`Qualified lead: ${$json.result.crm_ready.contact_name} from ${$json.result.crm_ready.company}. Classification: ${$json.result.ai_outputs.classification}. Score: ${$json.result.ai_outputs.score.total_score}.`}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-sales-placeholder",
+      "name": "Notify Sales Team Placeholder",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1300,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dispatch-note",
+              "name": "downstream_dispatch_note",
+              "type": "string",
+              "value": "Google Sheets and Airtable handoff happens inside FastAPI through the integration dispatcher. n8n does not send directly to those destinations in this starter workflow."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "downstream-dispatch-note",
+      "name": "Google Sheets Airtable Dispatch Note",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1560,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "error-note",
+              "name": "error_handling_note",
+              "type": "string",
+              "value": "Lead was not hot or the API returned a non-qualified response. Add logging, operator notification, or manual review here."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "api-error-branch",
+      "name": "API Error Branch Placeholder",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1300,
+        140
+      ]
+    }
+  ],
+  "connections": {
+    "Lead Intake Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Lead Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Lead Payload": {
+      "main": [
+        [
+          {
+            "node": "Generate Idempotency Key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Idempotency Key": {
+      "main": [
+        [
+          {
+            "node": "Send Lead to FastAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Lead to FastAPI": {
+      "main": [
+        [
+          {
+            "node": "Check Lead Qualification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Lead Qualification": {
+      "main": [
+        [
+          {
+            "node": "Notify Sales Team Placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "API Error Branch Placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Sales Team Placeholder": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets Airtable Dispatch Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "staticData": null,
+  "tags": []
+}

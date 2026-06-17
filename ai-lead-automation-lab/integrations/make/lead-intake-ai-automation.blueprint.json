@@ -1,0 +1,100 @@
+{
+  "name": "AI Lead Intake Automation - Make Starter Blueprint",
+  "blueprint_type": "documented_starter_pseudo_blueprint",
+  "import_note": "This blueprint is a documented starter blueprint, not guaranteed to be directly importable into every Make workspace. Recreate or adjust modules in Make if import compatibility differs.",
+  "variables": {
+    "LEAD_API_BASE_URL": "{{LEAD_API_BASE_URL}}",
+    "LEAD_API_KEY": "{{LEAD_API_KEY}}"
+  },
+  "scenario": [
+    {
+      "id": 1,
+      "module": "webhooks.customWebhook",
+      "name": "Custom Webhook - Lead Intake",
+      "description": "Receives simple external lead data from forms, ads, or other sources."
+    },
+    {
+      "id": 2,
+      "module": "tools.setVariable",
+      "name": "Normalize Lead Payload",
+      "description": "Maps name, email, phone, company, industry, budget, timeline, source, pain_point, and message into the FastAPI lead schema.",
+      "output_example": {
+        "lead_id": "make_{{generated_or_mapped_key}}",
+        "source": "{{source}}",
+        "submitted_at": "{{now}}",
+        "business_type": "{{industry}}",
+        "contact": {
+          "first_name": "{{first_name}}",
+          "last_name": "{{last_name}}",
+          "email": "{{email}}",
+          "phone": "{{phone}}",
+          "company": "{{company}}"
+        },
+        "lead_details": {
+          "service_interest": "{{pain_point}}",
+          "message": "{{message}}",
+          "budget_range": "{{budget}}",
+          "timeline": "{{timeline}}",
+          "preferred_contact_method": "email"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "module": "tools.setVariable",
+      "name": "Generate Idempotency Key",
+      "description": "Creates or maps a stable key for retries of the same lead.",
+      "value": "{{generated_or_mapped_key}}"
+    },
+    {
+      "id": 4,
+      "module": "http.makeRequest",
+      "name": "HTTP POST to FastAPI",
+      "request": {
+        "method": "POST",
+        "url": "{{LEAD_API_BASE_URL}}/webhooks/leads",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-API-Key": "{{LEAD_API_KEY}}",
+          "Idempotency-Key": "{{generated_or_mapped_key}}"
+        },
+        "body": "{{normalized_fastapi_lead_payload}}"
+      }
+    },
+    {
+      "id": 5,
+      "module": "router",
+      "name": "Router - Hot or Qualified vs Normal",
+      "routes": [
+        {
+          "name": "Hot or qualified lead",
+          "condition": "classification == hot OR lead_score >= 75",
+          "next": "Notification Placeholder"
+        },
+        {
+          "name": "Normal lead",
+          "condition": "classification != hot AND lead_score < 75",
+          "next": "No-op or manual review"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "module": "notification.placeholder",
+      "name": "Notification Placeholder",
+      "description": "Notify a sales team by Slack, email, or another Make module."
+    },
+    {
+      "id": 7,
+      "module": "errorHandler.placeholder",
+      "name": "Error Handling Route Placeholder",
+      "description": "Log failed API requests or notify an operator without exposing secrets."
+    }
+  ],
+  "notes": [
+    "Make sends the lead to FastAPI.",
+    "FastAPI processes the lead with AI.",
+    "FastAPI handles downstream Google Sheets, Airtable, and HubSpot dispatch through the app integration dispatcher.",
+    "HMAC is optional advanced security and is not implemented in this starter pseudo-blueprint."
+  ]
+}

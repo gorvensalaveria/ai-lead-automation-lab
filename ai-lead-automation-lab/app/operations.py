@@ -223,12 +223,210 @@ def render_system_status_page(status: dict[str, Any]) -> str:
           {render_field("Audit Event Time", latest_event.get("created_at", ""))}
         </div>
       </section>
+
+      <section
+        class="detail-section integration-dashboard"
+        aria-labelledby="integration-status-title"
+        data-integration-dashboard
+      >
+        <div class="detail-header">
+          <div>
+            <h3 id="integration-status-title">Integration Status</h3>
+            <p class="helper-text">Downstream delivery health from Google Sheets, Airtable, and HubSpot.</p>
+          </div>
+          <span class="status-pill" id="integration-dashboard-message">Loading</span>
+        </div>
+
+        <div
+          class="crm-grid"
+          id="integration-provider-summary"
+          aria-live="polite"
+          data-empty-text="Integration status is loading."
+        >
+          <div>
+            <span>Status</span>
+            <strong>Loading</strong>
+            <p class="helper-text">Checking integration providers.</p>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="detail-section integration-dashboard"
+        aria-labelledby="failed-runs-title"
+        data-integration-failed-runs
+      >
+        <div class="detail-header">
+          <div>
+            <h3 id="failed-runs-title">Recent Failed Integration Runs</h3>
+            <p class="helper-text">Retry failed downstream deliveries after checking provider configuration.</p>
+          </div>
+        </div>
+
+        <div id="integration-retry-feedback" class="helper-text" role="status" aria-live="polite"></div>
+        <div id="failed-integration-runs" aria-live="polite">
+          <p class="helper-text">Loading failed integration runs.</p>
+        </div>
+      </section>
     </section>
   </main>
 
   <footer>
     Built with Python, FastAPI, OpenAI API, JSON storage, and pytest.
   </footer>
+  <script>
+    const providerLabels = {{
+      google_sheets: "Google Sheets",
+      airtable: "Airtable",
+      hubspot: "HubSpot",
+    }};
+
+    function escapeHtml(value) {{
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }}
+
+    function formatStatus(value) {{
+      return String(value || "unknown").replace(/_/g, " ");
+    }}
+
+    async function loadIntegrationStatus() {{
+      const summary = document.getElementById("integration-provider-summary");
+      const message = document.getElementById("integration-dashboard-message");
+
+      try {{
+        const response = await fetch("/api/integrations/status");
+        if (!response.ok) {{
+          throw new Error("Status request failed.");
+        }}
+        const data = await response.json();
+        const providers = data.providers || {{}};
+        summary.innerHTML = Object.entries(providerLabels).map(([key, label]) => {{
+          const provider = providers[key] || {{}};
+          const enabled = provider.enabled ? "Enabled" : "Disabled";
+          return `
+            <div>
+              <span>${{escapeHtml(label)}}</span>
+              <strong>${{escapeHtml(enabled)}}</strong>
+              <p class="helper-text">
+                Last: ${{escapeHtml(formatStatus(provider.last_status))}}<br>
+                Success: ${{escapeHtml(provider.success_count || 0)}} |
+                Failed: ${{escapeHtml(provider.failed_count || 0)}}
+              </p>
+            </div>
+          `;
+        }}).join("");
+        message.textContent = data.failed_total ? `${{data.failed_total}} failed` : "Healthy";
+      }} catch (error) {{
+        summary.innerHTML = '<p class="helper-text">Integration status could not be loaded.</p>';
+        message.textContent = "Unavailable";
+      }}
+    }}
+
+    async function loadFailedIntegrationRuns() {{
+      const container = document.getElementById("failed-integration-runs");
+
+      try {{
+        const response = await fetch("/api/integrations/runs?status=failed");
+        if (!response.ok) {{
+          throw new Error("Failed runs request failed.");
+        }}
+        const data = await response.json();
+        const runs = data.runs || [];
+
+        if (!runs.length) {{
+          container.innerHTML = '<p class="helper-text">No failed integration runs.</p>';
+          return;
+        }}
+
+        container.innerHTML = `
+          <div class="table-wrap">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>Run ID</th>
+                  <th>Provider</th>
+                  <th>Lead/File</th>
+                  <th>Message</th>
+                  <th>Retry Count</th>
+                  <th>Created At</th>
+                  <th>Last Retry At</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${{runs.map((run) => `
+                  <tr>
+                    <td>${{escapeHtml(run.id)}}</td>
+                    <td>${{escapeHtml(providerLabels[run.provider] || run.provider)}}</td>
+                    <td>${{renderLeadFileCell(run)}}</td>
+                    <td>${{escapeHtml(run.message || "Delivery failed.")}}</td>
+                    <td>${{escapeHtml(run.retry_count || 0)}}</td>
+                    <td>${{escapeHtml(run.created_at || "")}}</td>
+                    <td>${{escapeHtml(run.last_retry_at || "")}}</td>
+                    <td>
+                      <button type="button" class="copy-button" data-retry-run-id="${{escapeHtml(run.id)}}">Retry</button>
+                    </td>
+                  </tr>
+                `).join("")}}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }} catch (error) {{
+        container.innerHTML = '<p class="helper-text">Failed integration runs could not be loaded.</p>';
+      }}
+    }}
+
+    function renderLeadFileCell(run) {{
+      const fileName = run.file_name || "";
+      if (!fileName) {{
+        return escapeHtml(run.lead_id || "");
+      }}
+      return `<a href="/history/${{encodeURIComponent(fileName)}}">${{escapeHtml(fileName)}}</a>`;
+    }}
+
+    async function retryIntegrationRun(runId, button) {{
+      const feedback = document.getElementById("integration-retry-feedback");
+      button.disabled = true;
+      feedback.textContent = `Retrying integration run ${{runId}}...`;
+
+      try {{
+        const response = await fetch(`/api/integrations/retry/${{encodeURIComponent(runId)}}`, {{
+          method: "POST",
+        }});
+        const data = await response.json();
+
+        if (!response.ok) {{
+          throw new Error(data.detail || "Retry failed.");
+        }}
+
+        feedback.textContent = `Retry ${{data.status}} for ${{providerLabels[data.provider] || data.provider}} run ${{data.run_id}}.`;
+      }} catch (error) {{
+        feedback.textContent = error.message || "Retry failed.";
+      }} finally {{
+        await loadIntegrationStatus();
+        await loadFailedIntegrationRuns();
+      }}
+    }}
+
+    document.addEventListener("click", (event) => {{
+      const button = event.target.closest("[data-retry-run-id]");
+      if (!button) {{
+        return;
+      }}
+      retryIntegrationRun(button.dataset.retryRunId, button);
+    }});
+
+    document.addEventListener("DOMContentLoaded", () => {{
+      loadIntegrationStatus();
+      loadFailedIntegrationRuns();
+    }});
+  </script>
 </body>
 </html>
 """

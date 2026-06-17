@@ -1,5 +1,6 @@
 """FastAPI webhook endpoints for the AI Lead Intake Automation System."""
 
+import json
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -14,17 +15,34 @@ from app.automation.storage import (
     archive_saved_output,
     build_history_csv,
     bulk_update_review_status,
+    create_integration_run,
+    get_integration_run,
+    get_integration_status_summary,
     has_exported_email_to_google_sheets,
     has_exported_lead_to_google_sheets,
     has_lead_event,
+    list_integration_runs,
     list_lead_events,
     list_saved_outputs,
+    load_idempotency_response,
     load_saved_output,
     record_lead_event,
+    save_idempotency_response,
+    update_integration_run_after_retry,
     update_review_status,
 )
 from app.automation.workflow import process_lead
-from app.config import GOOGLE_SHEETS_AUTO_APPEND
+from app.config import (
+    AIRTABLE_ENABLED,
+    GOOGLE_SHEETS_AUTO_APPEND,
+    HUBSPOT_ENABLED,
+    WEBHOOK_API_KEYS,
+    WEBHOOK_AUTH_ENABLED,
+    WEBHOOK_HMAC_ENABLED,
+    WEBHOOK_HMAC_SECRET,
+    WEBHOOK_REPLAY_PROTECTION_ENABLED,
+    WEBHOOK_SIGNATURE_TOLERANCE_SECONDS,
+)
 from app.integrations.google_sheets import (
     GOOGLE_SHEETS_COLUMNS,
     GoogleSheetsAppendError,
@@ -32,6 +50,13 @@ from app.integrations.google_sheets import (
     append_result_to_google_sheet,
     build_google_sheets_payload,
     build_google_sheets_row,
+)
+from app.integrations.dispatcher import (
+    build_legacy_google_sheets_response,
+    dispatch_processed_lead_integrations,
+    extract_destination_message,
+    extract_external_id,
+    retry_integration_destination,
 )
 from app.history_page import render_history_detail_page, render_history_page
 from app.lead_intake_page import render_lead_intake_page
@@ -41,6 +66,13 @@ from app.rate_limiter import (
     build_rate_limit_headers,
     get_rate_limit_key,
     lead_process_rate_limiter,
+)
+from app.security.webhook_auth import (
+    API_KEY_ERROR_DETAIL,
+    HMAC_ERROR_DETAIL,
+    HMAC_NOT_CONFIGURED_DETAIL,
+    is_valid_api_key,
+    is_valid_hmac_signature,
 )
 
 
@@ -267,6 +299,115 @@ def google_sheets_history_preview() -> dict[str, Any]:
     }
 
 
+@app.get("/api/integrations/runs")
+def integration_runs_api(
+    file_name: str | None = None,
+    lead_id: str | None = None,
+    provider: str | None = None,
+    status: str | None = None,
+) -> dict[str, Any]:
+    """Return safe downstream integration run history."""
+    try:
+        runs = list_integration_runs(
+            file_name=file_name,
+            lead_id=lead_id,
+            provider=provider,
+            status=status,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    return {"runs": runs}
+
+
+@app.get("/api/integrations/status")
+def integration_status_api() -> dict[str, Any]:
+    """Return provider enablement and integration run health summary."""
+    run_summary = get_integration_status_summary()
+    provider_enabled = {
+        "google_sheets": GOOGLE_SHEETS_AUTO_APPEND,
+        "airtable": AIRTABLE_ENABLED,
+        "hubspot": HUBSPOT_ENABLED,
+    }
+    providers = {}
+
+    for provider, enabled in provider_enabled.items():
+        provider_summary = run_summary.get(provider, {})
+        providers[provider] = {
+            "enabled": bool(enabled),
+            "last_status": provider_summary.get("last_status")
+            or ("disabled" if not enabled else "not_run"),
+            "success_count": int(provider_summary.get("success_count", 0)),
+            "failed_count": int(provider_summary.get("failed_count", 0)),
+            "skipped_count": int(provider_summary.get("skipped_count", 0)),
+        }
+
+    return {
+        "providers": providers,
+        "failed_total": sum(
+            provider_summary["failed_count"]
+            for provider_summary in providers.values()
+        ),
+    }
+
+
+@app.post("/api/integrations/retry/{run_id}")
+def retry_integration_run_api(run_id: int) -> dict[str, Any]:
+    """Retry one failed downstream integration run."""
+    integration_run = get_integration_run(run_id)
+    if integration_run is None:
+        raise HTTPException(status_code=404, detail="Integration run not found.")
+
+    if integration_run.get("status") != "failed":
+        raise HTTPException(
+            status_code=400,
+            detail="Only failed integration runs can be retried.",
+        )
+
+    file_name = str(integration_run.get("file_name") or "")
+    try:
+        processed_lead = load_saved_output(file_name)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+    retry_result = retry_integration_destination(
+        provider=str(integration_run.get("provider") or ""),
+        processed_lead=processed_lead,
+        output_path=str(Path("data/outputs") / file_name),
+        google_sheets_auto_append=GOOGLE_SHEETS_AUTO_APPEND,
+        airtable_enabled=AIRTABLE_ENABLED,
+        hubspot_enabled=HUBSPOT_ENABLED,
+        duplicate_export_checker=find_google_sheets_duplicate_export,
+        append_google_sheets_result=append_result_to_google_sheet,
+        record_event=record_lead_event,
+        event_logger=logger,
+    )
+    retry_status = normalize_retry_status(retry_result)
+
+    try:
+        update_integration_run_after_retry(
+            run_id=run_id,
+            status=retry_status,
+            external_id=extract_external_id(retry_result),
+            message=extract_destination_message(retry_result),
+            response_json=retry_result,
+        )
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+    updated_run = get_integration_run(run_id) or integration_run
+
+    return {
+        "status": retry_status,
+        "run_id": run_id,
+        "provider": integration_run.get("provider"),
+        "retry_count": updated_run.get("retry_count", 0),
+        "result": retry_result,
+    }
+
+
 @app.get("/api/integrations/google-sheets/preview/{file_name}")
 def google_sheets_lead_preview(file_name: str) -> dict[str, Any]:
     """Return a Google Sheets append payload preview for one saved lead."""
@@ -374,12 +515,20 @@ def record_lead_history_event(file_name: str, payload: dict[str, Any]) -> dict[s
 
 
 @app.post("/webhooks/leads")
-def process_lead_webhook(
+async def process_lead_webhook(
     request: Request,
     response: Response,
-    lead: dict[str, Any],
 ) -> dict[str, Any]:
     """Process one lead from a webhook-style JSON request body."""
+    raw_body = await request.body()
+    authenticate_webhook_request(request=request, raw_body=raw_body)
+
+    idempotency_key = request.headers.get("Idempotency-Key", "").strip()
+    if idempotency_key:
+        saved_response = load_idempotency_response(idempotency_key)
+        if saved_response is not None:
+            return saved_response
+
     rate_limit_result = lead_process_rate_limiter.check(get_rate_limit_key(request))
     for header, value in build_rate_limit_headers(rate_limit_result).items():
         response.headers[header] = value
@@ -397,6 +546,11 @@ def process_lead_webhook(
             detail="Lead processing rate limit exceeded. Try again later.",
             headers=build_rate_limit_headers(rate_limit_result),
         )
+
+    try:
+        lead = json.loads(raw_body)
+    except json.JSONDecodeError as error:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload.") from error
 
     try:
         result, output_path = process_lead(lead)
@@ -423,10 +577,20 @@ def process_lead_webhook(
             detail="Unexpected error while processing lead.",
         ) from error
 
-    google_sheets_result = append_processed_lead_to_google_sheets_if_enabled(
+    integration_result = dispatch_processed_lead_integrations(
         result=result,
         output_path=str(output_path),
+        google_sheets_auto_append=GOOGLE_SHEETS_AUTO_APPEND,
+        airtable_enabled=AIRTABLE_ENABLED,
+        hubspot_enabled=HUBSPOT_ENABLED,
+        duplicate_export_checker=find_google_sheets_duplicate_export,
+        append_google_sheets_result=append_result_to_google_sheet,
+        record_event=record_lead_event,
+        record_integration_runs=True,
+        integration_run_recorder=create_integration_run,
+        event_logger=logger,
     )
+    google_sheets_result = build_legacy_google_sheets_response(integration_result)
 
     response_payload = {
         "status": "processed",
@@ -436,48 +600,45 @@ def process_lead_webhook(
     if google_sheets_result:
         response_payload["google_sheets"] = google_sheets_result
 
+    if idempotency_key:
+        save_idempotency_response(
+            idempotency_key=idempotency_key,
+            response_payload=response_payload,
+            lead_id=result.get("lead", {}).get("lead_id", ""),
+            file_name=Path(output_path).name,
+        )
+
     return response_payload
 
 
-def append_processed_lead_to_google_sheets_if_enabled(
-    result: dict[str, Any],
-    output_path: str,
-) -> dict[str, Any] | None:
-    """Append a newly processed lead to Google Sheets when auto-append is enabled."""
-    if not GOOGLE_SHEETS_AUTO_APPEND:
-        return None
+def authenticate_webhook_request(request: Request, raw_body: bytes) -> None:
+    """Validate configured webhook authentication requirements."""
+    if WEBHOOK_AUTH_ENABLED and not is_valid_api_key(
+        request.headers.get("X-API-Key"),
+        WEBHOOK_API_KEYS,
+    ):
+        raise HTTPException(status_code=401, detail=API_KEY_ERROR_DETAIL)
 
-    file_name = Path(output_path).name
-    duplicate_export = find_google_sheets_duplicate_export(
-        result=result,
-        file_name=file_name,
-    )
-    if duplicate_export:
-        return {
-            "status": "skipped",
-            "reason": "already_exported",
-            "detail": duplicate_export,
-        }
+    if not WEBHOOK_HMAC_ENABLED:
+        return
 
-    try:
-        append_result = append_result_to_google_sheet(result)
-        record_lead_event(
-            file_name=file_name,
-            event_type="google_sheets_exported",
-            event_label="Auto-exported to Google Sheets",
-            event_detail=append_result.get("updated_range", ""),
-        )
-    except (GoogleSheetsConfigError, GoogleSheetsAppendError) as error:
+    if not WEBHOOK_HMAC_SECRET:
         log_structured_event(
             logger=logger,
-            event="google_sheets_auto_append_failed",
-            output_path=output_path,
-            error_type=type(error).__name__,
-            error=str(error),
+            event="webhook_hmac_not_configured",
+            request_id=getattr(request.state, "request_id", ""),
         )
-        return {"status": "failed", "detail": str(error)}
+        raise HTTPException(status_code=500, detail=HMAC_NOT_CONFIGURED_DETAIL)
 
-    return append_result
+    if not is_valid_hmac_signature(
+        raw_body=raw_body,
+        timestamp=request.headers.get("X-Webhook-Timestamp"),
+        signature=request.headers.get("X-Webhook-Signature"),
+        secret=WEBHOOK_HMAC_SECRET,
+        tolerance_seconds=WEBHOOK_SIGNATURE_TOLERANCE_SECONDS,
+        replay_protection_enabled=WEBHOOK_REPLAY_PROTECTION_ENABLED,
+    ):
+        raise HTTPException(status_code=401, detail=HMAC_ERROR_DETAIL)
 
 
 def find_google_sheets_duplicate_export(
@@ -506,3 +667,12 @@ def build_client_processing_error_detail(request: Request) -> str:
         return AI_PROCESSING_UNAVAILABLE_DETAIL
 
     return f"{AI_PROCESSING_UNAVAILABLE_DETAIL} Reference ID: {request_id}"
+
+
+def normalize_retry_status(retry_result: dict[str, Any]) -> str:
+    """Return the integration run status to store after a retry attempt."""
+    status = str(retry_result.get("status", "")).strip().lower()
+    if status in {"success", "skipped"}:
+        return status
+
+    return "failed"

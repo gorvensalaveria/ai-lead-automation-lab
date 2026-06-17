@@ -1,0 +1,12 @@
+{
+  "name": "Maria Santos",
+  "email": "maria@example.com",
+  "phone": "+639171234567",
+  "company": "Santos Dental Clinic",
+  "industry": "Healthcare",
+  "budget": "PHP 80,000",
+  "timeline": "This month",
+  "source": "Website form",
+  "pain_point": "Too many missed inquiries after business hours",
+  "message": "We need an AI assistant to qualify leads and send follow-ups."
+}
